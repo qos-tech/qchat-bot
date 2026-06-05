@@ -6,30 +6,24 @@ import type { NormalizedMedia } from "../../../domain/messaging/normalized-media
 export class QChatPayloadNormalizer implements IncomingMessageNormalizer {
   normalize(payload: any): NormalizedIncomingMessage {
     const body = payload.body;
-
     const msg = body?.msg;
     const ticket = body?.ticket;
     const message = msg?.message;
 
-    const buttonReply = message?.templateButtonReplyMessage;
-
     const kind = this.detectKind(message);
-
     const media = this.extractMedia(message, kind);
-
     const text = this.extractText(msg, message, kind);
 
     return {
       provider: "qchat",
-
-      messageId: msg?.key?.id,
+      messageId: String(msg?.key?.id),
 
       ...(ticket?.id ? { ticketId: ticket.id } : {}),
       ...(ticket?.contactId ? { contactId: ticket.contactId } : {}),
       ...(ticket?.companyId ? { companyId: ticket.companyId } : {}),
       ...(ticket?.whatsappId ? { whatsappId: ticket.whatsappId } : {}),
 
-      phone: ticket?.contact?.number,
+      phone: String(ticket?.contact?.number),
       ...(ticket?.contact?.name ? { name: ticket.contact.name } : {}),
 
       kind,
@@ -37,12 +31,14 @@ export class QChatPayloadNormalizer implements IncomingMessageNormalizer {
 
       fromMe: Boolean(msg?.key?.fromMe),
 
-      ...(buttonReply?.selectedID ? { buttonId: buttonReply.selectedID } : {}),
-      ...(buttonReply?.selectedDisplayText
-        ? { buttonText: buttonReply.selectedDisplayText }
+      ...(message?.templateButtonReplyMessage?.selectedID
+        ? { buttonId: message.templateButtonReplyMessage.selectedID }
+        : {}),
+      ...(message?.templateButtonReplyMessage?.selectedDisplayText
+        ? { buttonText: message.templateButtonReplyMessage.selectedDisplayText }
         : {}),
 
-      isButtonReply: Boolean(buttonReply?.selectedID),
+      isButtonReply: kind === "button",
 
       ...(media ? { media } : {}),
 
@@ -69,10 +65,8 @@ export class QChatPayloadNormalizer implements IncomingMessageNormalizer {
     if (message?.contactMessage || message?.contactsArrayMessage)
       return "contact";
     if (message?.reactionMessage) return "reaction";
-
-    if (message?.conversation || message?.extendedTextMessage?.text) {
+    if (message?.conversation || message?.extendedTextMessage?.text)
       return "text";
-    }
 
     return "unknown";
   }
@@ -94,68 +88,42 @@ export class QChatPayloadNormalizer implements IncomingMessageNormalizer {
       return message?.documentMessage?.caption || "";
     }
 
-    return (
-      msg?.body ||
-      message?.conversation ||
-      message?.extendedTextMessage?.text ||
-      ""
-    );
+    if (kind === "text") {
+      return (
+        message?.conversation ||
+        message?.extendedTextMessage?.text ||
+        msg?.body ||
+        ""
+      );
+    }
+
+    return "";
   }
 
   private extractMedia(
     message: any,
     kind: MessageKind,
   ): NormalizedMedia | null {
-    if (kind === "image") {
-      const image = message?.imageMessage;
+    const mediaByKind: Record<string, any> = {
+      image: message?.imageMessage,
+      audio: message?.audioMessage,
+      video: message?.videoMessage,
+      document: message?.documentMessage,
+    };
 
-      return {
-        ...(image?.mimetype ? { mimeType: image.mimetype } : {}),
-        ...(image?.URL ? { url: image.URL } : {}),
-        ...(image?.caption ? { caption: image.caption } : {}),
-        ...(image?.fileLength ? { size: Number(image.fileLength) } : {}),
-      };
-    }
+    const media = mediaByKind[kind];
 
-    if (kind === "audio") {
-      const audio = message?.audioMessage;
+    if (!media) return null;
 
-      return {
-        ...(audio?.mimetype ? { mimeType: audio.mimetype } : {}),
-        ...(audio?.URL ? { url: audio.URL } : {}),
-        ...(audio?.fileLength ? { size: Number(audio.fileLength) } : {}),
-        ...(audio?.seconds ? { durationSeconds: Number(audio.seconds) } : {}),
-      };
-    }
-
-    if (kind === "video") {
-      const video = message?.videoMessage;
-
-      return {
-        ...(video?.mimetype ? { mimeType: video.mimetype } : {}),
-        ...(video?.URL ? { url: video.URL } : {}),
-        ...(video?.caption ? { caption: video.caption } : {}),
-        ...(video?.fileLength ? { size: Number(video.fileLength) } : {}),
-        ...(video?.seconds ? { durationSeconds: Number(video.seconds) } : {}),
-      };
-    }
-
-    if (kind === "document") {
-      const document = message?.documentMessage;
-
-      return {
-        ...(document?.mimetype ? { mimeType: document.mimetype } : {}),
-        ...(document?.fileName ? { fileName: document.fileName } : {}),
-        ...(document?.title ? { title: document.title } : {}),
-        ...(document?.URL ? { url: document.URL } : {}),
-        ...(document?.caption ? { caption: document.caption } : {}),
-        ...(document?.fileLength ? { size: Number(document.fileLength) } : {}),
-        ...(document?.pageCount
-          ? { pageCount: Number(document.pageCount) }
-          : {}),
-      };
-    }
-
-    return null;
+    return {
+      ...(media.mimetype ? { mimeType: media.mimetype } : {}),
+      ...(media.fileName ? { fileName: media.fileName } : {}),
+      ...(media.title ? { title: media.title } : {}),
+      ...(media.URL ? { url: media.URL } : {}),
+      ...(media.caption ? { caption: media.caption } : {}),
+      ...(media.fileLength ? { size: Number(media.fileLength) } : {}),
+      ...(media.seconds ? { durationSeconds: Number(media.seconds) } : {}),
+      ...(media.pageCount ? { pageCount: Number(media.pageCount) } : {}),
+    };
   }
 }
