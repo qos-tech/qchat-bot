@@ -1,3 +1,5 @@
+import type { ButtonMessage } from "../../domain/messaging/button-message.js";
+
 export const afterHoursMenu: ButtonMessage = {
   title: "Olá! Você está no atendimento da QoS 📞☁️",
   description:
