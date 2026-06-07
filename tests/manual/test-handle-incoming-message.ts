@@ -11,10 +11,7 @@ const sessions = {
       whatsappId: "122",
       contactId: "84",
       phone: "5541999999999",
-
       stage: "awaiting_main_menu" as const,
-
-      intent: "finance" as const,
     };
   },
 
@@ -50,8 +47,8 @@ const businessHours = {
     console.log("Verificou horário");
 
     return {
-      isOpen: true,
-      reason: "business_hours" as const,
+      isOpen: false,
+      reason: "after_closing" as const,
     };
   },
 };

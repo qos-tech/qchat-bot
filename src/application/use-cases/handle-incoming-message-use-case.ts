@@ -3,13 +3,15 @@ import type { TicketTransferGateway } from "../../domain/bot/ticket-transfer-gat
 import type { MessagingGateway } from "../../domain/messaging/messaging-gateway.js";
 import type { NormalizedIncomingMessage } from "../../domain/messaging/normalized-incoming-message.js";
 import type { QueueConfig } from "../config/queue-config.js";
-import { financeMenu, mainMenu } from "../menus/index.js";
+import { afterHoursMenu, financeMenu, mainMenu } from "../menus/index.js";
 import type { BusinessHoursService } from "../services/business-hours-service.js";
 import { defaultBusinessHoursConfig } from "../services/default-business-hours-config.js";
 import {
   FINANCE_CONFIRMATION_MESSAGE,
   OTHER_CONFIRMATION_MESSAGE,
   SUPPORT_CONFIRMATION_MESSAGE,
+  AFTER_HOURS_OTHER_CONFIRMATION_MESSAGE,
+  AFTER_HOURS_SUPPORT_CONFIRMATION_MESSAGE,
 } from "../messages/index.js";
 
 export class HandleIncomingMessageUseCase {
@@ -67,6 +69,91 @@ export class HandleIncomingMessageUseCase {
         phone: message.phone,
         ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
         payload: mainMenu,
+      });
+
+      return;
+    }
+
+    if (!session && !businessHours.isOpen) {
+      await this.sessions.save({
+        ticketId: String(message.ticketId),
+        provider: message.provider,
+        ...(message.companyId ? { companyId: String(message.companyId) } : {}),
+        ...(message.whatsappId
+          ? { whatsappId: String(message.whatsappId) }
+          : {}),
+        ...(message.contactId ? { contactId: String(message.contactId) } : {}),
+        phone: message.phone,
+        stage: "awaiting_main_menu",
+      });
+
+      await this.messaging.sendButtons({
+        phone: message.phone,
+        ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
+        payload: afterHoursMenu,
+      });
+
+      return;
+    }
+
+    if (
+      session?.stage === "awaiting_main_menu" &&
+      !message.isButtonReply &&
+      !businessHours.isOpen
+    ) {
+      await this.messaging.sendButtons({
+        phone: message.phone,
+        ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
+        payload: afterHoursMenu,
+      });
+
+      return;
+    }
+
+    // clique do menu fora de horario
+    if (message.buttonId === "option_support" && !businessHours.isOpen) {
+      await this.sessions.save({
+        ticketId: String(message.ticketId),
+        provider: message.provider,
+        ...(message.companyId ? { companyId: String(message.companyId) } : {}),
+        ...(message.whatsappId
+          ? { whatsappId: String(message.whatsappId) }
+          : {}),
+        ...(message.contactId ? { contactId: String(message.contactId) } : {}),
+        phone: message.phone,
+        stage: "waiting_human",
+        intent: "support",
+      });
+
+      await this.transfer.transfer({
+        number: message.phone,
+        queueId: this.queues.supportQueueId,
+        status: "pending",
+        message: AFTER_HOURS_SUPPORT_CONFIRMATION_MESSAGE,
+      });
+
+      return;
+    }
+
+    if (message.buttonId === "option_others" && !businessHours.isOpen) {
+      await this.sessions.save({
+        ticketId: String(message.ticketId),
+        provider: message.provider,
+        ...(message.companyId ? { companyId: String(message.companyId) } : {}),
+        ...(message.whatsappId
+          ? { whatsappId: String(message.whatsappId) }
+          : {}),
+        ...(message.contactId ? { contactId: String(message.contactId) } : {}),
+        phone: message.phone,
+        stage: "waiting_human",
+        intent: "other",
+      });
+
+      await this.transfer.transfer({
+        number: message.phone,
+        queueId: this.queues.otherQueueId,
+        status: "pending",
+        message: AFTER_HOURS_OTHER_CONFIRMATION_MESSAGE,
       });
 
       return;
