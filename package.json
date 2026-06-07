@@ -10,7 +10,8 @@
     "migrate:down": "node-pg-migrate down",
     "test:normalizer": "tsx tests/manual/test-qchat-normalizer.ts",
     "test:session-repo": "tsx tests/manual/test-session-repository.ts",
-    "test:business-hours": "tsx tests/manual/test-business-hours.ts"
+    "test:business-hours": "tsx tests/manual/test-business-hours.ts",
+    "test:use-case": "tsx tests/manual/test-handle-incoming-message.ts"
   },
   "keywords": [],
   "author": "",
