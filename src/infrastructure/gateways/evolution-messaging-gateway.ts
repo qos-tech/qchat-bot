@@ -31,6 +31,8 @@ export class EvolutionMessagingGateway implements MessagingGateway {
   }
 
   private async post(path: string, body: unknown): Promise<void> {
+    this.validateConfig();
+
     const response = await fetch(`${this.apiUrl}/${path}`, {
       method: "POST",
       headers: {
@@ -47,5 +49,11 @@ export class EvolutionMessagingGateway implements MessagingGateway {
         `Evolution API error: ${response.status} ${response.statusText} - ${errorBody}`,
       );
     }
+  }
+
+  private validateConfig(): void {
+    if (!this.apiUrl) throw new Error("EVOLUTION_API_URL não definida");
+    if (!this.apiKey) throw new Error("EVOLUTION_API_KEY não definida");
+    if (!this.instance) throw new Error("EVOLUTION_INSTANCE não definida");
   }
 }
