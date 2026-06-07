@@ -6,6 +6,11 @@ import type { QueueConfig } from "../config/queue-config.js";
 import { financeMenu, mainMenu } from "../menus/index.js";
 import type { BusinessHoursService } from "../services/business-hours-service.js";
 import { defaultBusinessHoursConfig } from "../services/default-business-hours-config.js";
+import {
+  FINANCE_CONFIRMATION_MESSAGE,
+  OTHER_CONFIRMATION_MESSAGE,
+  SUPPORT_CONFIRMATION_MESSAGE,
+} from "../messages/index.js";
 
 export class HandleIncomingMessageUseCase {
   constructor(
@@ -85,8 +90,31 @@ export class HandleIncomingMessageUseCase {
         number: message.phone,
         queueId: this.queues.supportQueueId,
         status: "pending",
-        message:
-          "Perfeito 🙂\n\nSua solicitação foi encaminhada para nossa equipe técnica. Em instantes um atendente irá auxiliá-lo.",
+        message: SUPPORT_CONFIRMATION_MESSAGE,
+      });
+
+      return;
+    }
+
+    if (message.buttonId === "option_others" && businessHours.isOpen) {
+      await this.sessions.save({
+        ticketId: String(message.ticketId),
+        provider: message.provider,
+        ...(message.companyId ? { companyId: String(message.companyId) } : {}),
+        ...(message.whatsappId
+          ? { whatsappId: String(message.whatsappId) }
+          : {}),
+        ...(message.contactId ? { contactId: String(message.contactId) } : {}),
+        phone: message.phone,
+        stage: "waiting_human",
+        intent: "other",
+      });
+
+      await this.transfer.transfer({
+        number: message.phone,
+        queueId: this.queues.otherQueueId,
+        status: "pending",
+        message: OTHER_CONFIRMATION_MESSAGE,
       });
 
       return;
@@ -124,6 +152,41 @@ export class HandleIncomingMessageUseCase {
         phone: message.phone,
         ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
         payload: financeMenu,
+      });
+
+      return;
+    }
+
+    if (
+      ["finance_nf", "finance_invoice", "finance_others"].includes(
+        message.buttonId ?? "",
+      ) &&
+      businessHours.isOpen
+    ) {
+      const intentMap = {
+        finance_nf: "finance_nf",
+        finance_invoice: "finance_invoice",
+        finance_others: "finance_other",
+      } as const;
+
+      await this.sessions.save({
+        ticketId: String(message.ticketId),
+        provider: message.provider,
+        ...(message.companyId ? { companyId: String(message.companyId) } : {}),
+        ...(message.whatsappId
+          ? { whatsappId: String(message.whatsappId) }
+          : {}),
+        ...(message.contactId ? { contactId: String(message.contactId) } : {}),
+        phone: message.phone,
+        stage: "waiting_human",
+        intent: intentMap[message.buttonId as keyof typeof intentMap],
+      });
+
+      await this.transfer.transfer({
+        number: message.phone,
+        queueId: this.queues.financeQueueId,
+        status: "pending",
+        message: FINANCE_CONFIRMATION_MESSAGE,
       });
 
       return;

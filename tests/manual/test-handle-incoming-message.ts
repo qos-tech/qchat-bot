@@ -11,7 +11,10 @@ const sessions = {
       whatsappId: "122",
       contactId: "84",
       phone: "5541999999999",
+
       stage: "awaiting_main_menu" as const,
+
+      intent: "finance" as const,
     };
   },
 
@@ -70,24 +73,19 @@ await useCase.execute({
   provider: "qchat",
   messageId: "msg-1",
   ticketId: "15551",
-  contactId: "84",
   companyId: "1",
   whatsappId: "122",
+  contactId: "84",
   phone: "5541999999999",
-
   kind: "button",
-  text: "Suporte Técnico",
-
-  fromMe: false,
-
+  text: "Outros Assuntos",
+  buttonId: "option_others",
+  buttonText: "Outros Assuntos",
   isButtonReply: true,
-  buttonId: "option_support",
-  buttonText: "Suporte Técnico",
-
+  fromMe: false,
   status: "pending",
   queueId: "46",
   userId: null,
-
   raw: {},
 });
 

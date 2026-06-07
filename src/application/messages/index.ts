@@ -1,0 +1,5 @@
+export {
+  SUPPORT_CONFIRMATION_MESSAGE,
+  FINANCE_CONFIRMATION_MESSAGE,
+  OTHER_CONFIRMATION_MESSAGE,
+} from "./confirmation-messages.js";
