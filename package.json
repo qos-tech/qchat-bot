@@ -11,7 +11,8 @@
     "test:normalizer": "tsx tests/manual/test-qchat-normalizer.ts",
     "test:session-repo": "tsx tests/manual/test-session-repository.ts",
     "test:business-hours": "tsx tests/manual/test-business-hours.ts",
-    "test:use-case": "tsx tests/manual/test-handle-incoming-message.ts"
+    "test:use-case": "tsx tests/manual/test-handle-incoming-message.ts",
+    "test:evolution": "tsx tests/manual/test-evolution-gateway.ts"
   },
   "keywords": [],
   "author": "",
