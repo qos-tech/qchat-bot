@@ -1,5 +1,5 @@
 import type { ConversationSessionRepository } from "../../domain/bot/conversation-session-repository.js";
-import type { TicketRoutingGateway } from "../../domain/bot/ticket-routing-gateway.js";
+import type { TicketTransferGateway } from "../../domain/bot/ticket-transfer-gateway.js";
 import type { MessagingGateway } from "../../domain/messaging/messaging-gateway.js";
 import type { NormalizedIncomingMessage } from "../../domain/messaging/normalized-incoming-message.js";
 import type { QueueConfig } from "../config/queue-config.js";
@@ -11,7 +11,7 @@ export class HandleIncomingMessageUseCase {
   constructor(
     private readonly sessions: ConversationSessionRepository,
     private readonly messaging: MessagingGateway,
-    private readonly routing: TicketRoutingGateway,
+    private readonly transfer: TicketTransferGateway,
     private readonly businessHours: BusinessHoursService,
     private readonly queues: QueueConfig,
   ) {}
@@ -62,6 +62,31 @@ export class HandleIncomingMessageUseCase {
         phone: message.phone,
         ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
         payload: mainMenu,
+      });
+
+      return;
+    }
+
+    if (message.buttonId === "option_support" && businessHours.isOpen) {
+      await this.sessions.save({
+        ticketId: String(message.ticketId),
+        provider: message.provider,
+        ...(message.companyId ? { companyId: String(message.companyId) } : {}),
+        ...(message.whatsappId
+          ? { whatsappId: String(message.whatsappId) }
+          : {}),
+        ...(message.contactId ? { contactId: String(message.contactId) } : {}),
+        phone: message.phone,
+        stage: "waiting_human",
+        intent: "support",
+      });
+
+      await this.transfer.transfer({
+        number: message.phone,
+        queueId: this.queues.supportQueueId,
+        status: "pending",
+        message:
+          "Perfeito 🙂\n\nSua solicitação foi encaminhada para nossa equipe técnica. Em instantes um atendente irá auxiliá-lo.",
       });
 
       return;

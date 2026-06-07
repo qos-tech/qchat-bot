@@ -11,8 +11,7 @@ const sessions = {
       whatsappId: "122",
       contactId: "84",
       phone: "5541999999999",
-      stage: "awaiting_finance_menu" as const,
-      intent: "finance" as const,
+      stage: "awaiting_main_menu" as const,
     };
   },
 
@@ -36,9 +35,9 @@ const messaging = {
   },
 };
 
-const routing = {
-  async moveToQueue(params: unknown) {
-    console.log("MOVEU FILA:");
+const transfer = {
+  async transfer(params: unknown) {
+    console.log("TRANSFERIU:");
     console.log(params);
   },
 };
@@ -57,13 +56,13 @@ const businessHours = {
 const useCase = new HandleIncomingMessageUseCase(
   sessions,
   messaging,
-  routing,
+  transfer,
   businessHours,
   {
-    triageQueueId: "10",
+    triageQueueId: "46",
     supportQueueId: "1",
-    financeQueueId: "2",
-    otherQueueId: "3",
+    financeQueueId: "3",
+    otherQueueId: "2",
   },
 );
 
@@ -76,15 +75,17 @@ await useCase.execute({
   whatsappId: "122",
   phone: "5541999999999",
 
-  kind: "text",
-  text: "quero meu boleto",
+  kind: "button",
+  text: "Suporte Técnico",
 
   fromMe: false,
 
-  isButtonReply: false,
+  isButtonReply: true,
+  buttonId: "option_support",
+  buttonText: "Suporte Técnico",
 
   status: "pending",
-  queueId: "10",
+  queueId: "46",
   userId: null,
 
   raw: {},
