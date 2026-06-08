@@ -13,7 +13,8 @@
     "test:business-hours": "tsx tests/manual/test-business-hours.ts",
     "test:use-case": "tsx tests/manual/test-handle-incoming-message.ts",
     "test:evolution": "tsx tests/manual/test-evolution-gateway.ts",
-    "test:qchat-transfer": "tsx tests/manual/test-qchat-transfer-gateway.ts"
+    "test:qchat-transfer": "tsx tests/manual/test-qchat-transfer-gateway.ts",
+    "test:bootstrap": "tsx tests/manual/test-bootstrap.ts"
   },
   "keywords": [],
   "author": "",
