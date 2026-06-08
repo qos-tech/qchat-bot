@@ -13,92 +13,42 @@
 - [x] Menu financeiro
 - [x] Menu fora do horário
 
-## Horário Comercial
-
-- [x] Suporte
-- [x] Financeiro
-- [x] Outros
-
-## Fora do Horário
-
-- [x] Suporte
-- [x] Outros
-
 ## Integrações
 
 - [x] Evolution Messaging Gateway
 - [x] QChat Ticket Transfer Gateway
+- [x] Retry em APIs externas
 
-## HTTP
+## HTTP / Webhook
 
 - [x] Servidor Fastify
 - [x] Health Check
 - [x] Webhook QChat
-
-## Webhook
-
-- [x] Integração Webhook → Normalizer
-- [x] Integração Normalizer → UseCase
+- [x] Payload real do QChat
+- [x] Payload encapsulado
 - [x] Tratamento de erros
-- [x] Compatibilidade com payload real do QChat
-- [x] Compatibilidade com payload encapsulado
-
-## Configuração
-
-- [x] env.ts
-- [x] Validação Zod
-- [x] Remoção de process.env direto
-- [x] Startup validation
-
-## Proteções
-
-- [x] Ignorar mensagens do próprio sistema
-- [x] Ignorar tickets atribuídos
-- [x] Ignorar filas fora da triagem
-- [x] Evitar transferências duplicadas
-- [x] Evitar alteração de estado após falha
-- [x] Recuperação de tickets reutilizados
-- [x] Reset de sessões waiting_human ao retornar para triagem
-
-## Tratamento de Erros
-
-- [x] ExternalApiError
-- [x] Erros Evolution
-- [x] Erros QChat
-- [x] Diferenciar 500 e 502
-- [x] Logs contextualizados
-- [x] Respostas HTTP padronizadas
-- [ ] Estratégia de retry
 
 ## Observabilidade
 
-### Logs
-
-- [x] message_received
-- [x] session_checked
-- [x] session_saved
-- [x] session_deleted
-- [x] menu_sent
-- [x] ticket_transferred
-- [x] message_ignored
-- [x] business_hours_checked
-- [x] message_unhandled
-- [x] external_api_error
-
-### Correlation ID
-
-- [x] Criar correlation ID por atendimento
-- [x] Incluir correlation ID nos logs do UseCase
-- [x] Incluir correlation ID nos gateways
-- [x] Propagar correlation ID para ExternalApiError
+- [x] Logs estruturados
+- [x] Correlation ID no UseCase
+- [x] Correlation ID nos gateways
+- [x] Correlation ID nos erros externos
 - [x] Rastreabilidade ponta a ponta
 
-## Banco
+## Resiliência
 
-- [x] Índice em updated_at
-- [x] SessionMaintenanceRepository
-- [x] CleanupSessionsUseCase
-- [x] cleanup:sessions
+- [x] ExternalApiError
+- [x] Diferenciar erro interno 500 e erro externo 502
+- [x] Retry em falhas de rede
+- [x] Retry em HTTP 408/429/5xx
+- [x] Não repetir erro 4xx definitivo
+- [x] Retentativas configuráveis por ENV
+
+## Manutenção
+
+- [x] Cleanup de sessões
+- [x] Índice em `bot_sessions.updated_at`
 - [x] Retenção configurável por ENV
 
 ## Deploy
@@ -106,37 +56,20 @@
 - [x] Dockerfile
 - [x] .dockerignore
 - [x] docker-compose
-- [x] Healthcheck
-- [x] Build local
-- [x] Deploy em servidor
 - [x] PostgreSQL externo
-- [x] Migrations dentro do container
-
-## Testes
-
-- [x] Repository
-- [x] Business Hours
-- [x] Use Case
-- [x] Evolution real
-- [x] QChat real
-- [x] Bootstrap
-- [x] Webhook real
-- [x] Simulação de falhas
-- [x] Reabertura de atendimento
+- [x] Migrations no container
+- [x] Teste em servidor
 
 ---
 
 # Produção
 
-## Pendente
-
-- [ ] Agendar cleanup:sessions via cron
-- [ ] Definir retenção final
-- [ ] Revisar constraints do banco
-- [ ] Revisar backup
+- [ ] Agendar `cleanup:sessions` via cron
 - [ ] Configurar domínio público
 - [ ] Configurar SSL
-- [ ] Apontar webhook definitivo
+- [ ] Apontar webhook definitivo do QChat
+- [ ] Revisar backup do banco
+- [ ] Revisar constraints do banco
 
 ---
 
@@ -144,22 +77,13 @@
 
 ## Integração GLPI
 
-### Fase 1
-
 - [ ] Validar usuário por telefone
 - [ ] Buscar usuário no GLPI
 - [ ] Abrir chamado
 - [ ] Retornar número do chamado
-
-### Fase 2
-
 - [ ] Consultar chamado
 - [ ] Adicionar acompanhamento
 - [ ] Encerrar chamado
-
-### Fase 3
-
-- [ ] Integração completa Bot ↔ GLPI
 
 ---
 
