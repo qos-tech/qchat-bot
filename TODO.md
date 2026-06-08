@@ -42,6 +42,8 @@
 - [x] Integrar Webhook → Normalizer
 - [x] Integrar Normalizer → UseCase
 - [x] Tratar erros do webhook
+- [x] Corrigir payload real do QChat
+- [x] Suportar payload direto e payload encapsulado
 
 ### Configuração
 
@@ -59,6 +61,8 @@
 - [x] Ignorar sessões em waiting_human
 - [x] Evitar transferências duplicadas
 - [x] Evitar mudança de estado após falha de integração
+- [x] Recuperar tickets reutilizados pelo QChat
+- [x] Resetar sessões waiting_human ao retornar para triagem
 
 ### Tratamento de Erros
 
@@ -104,6 +108,7 @@
 - [x] Testar build local
 - [x] Testar execução via Docker
 - [x] Executar migrations dentro do container
+- [x] Testar deploy em servidor
 
 ### Testes
 
@@ -116,6 +121,7 @@
 - [x] Webhook inicial real
 - [x] Falha simulada Evolution
 - [x] Falha simulada QChat
+- [x] Ticket reutilizado após fechamento
 
 ---
 
@@ -129,6 +135,7 @@
 - [x] Receber clique do botão
 - [x] Transferir ticket no QChat
 - [x] Validar fluxo completo
+- [x] Validar reabertura de atendimento
 
 ---
 
@@ -154,7 +161,6 @@
 
 ## Banco
 
-- [ ] Revisar índices
 - [ ] Revisar constraints
 - [ ] Revisar política de backup
 
@@ -202,49 +208,6 @@
 
 ---
 
-# Filas
-
-- Triagem: 46
-- Suporte: 1
-- Outros: 2
-- Financeiro: 3
-
-# Horário Comercial
-
-- Segunda a Sexta
-- 08:30 às 12:00
-- 13:00 às 17:30
-- Feriados nacionais: fechado
-
-# Arquitetura Atual
-
-QChat
-↓
-Webhook Fastify
-↓
-Normalizer
-↓
-HandleIncomingMessageUseCase
-↓
-PostgreSQL
-
-├─ Evolution (Menus)
-├─ QChat (Transferências)
-├─ ExternalApiError
-└─ Cleanup Sessions
-
-# Comandos Importantes
-
-```bash
-npm run build
-npm run start
-npm run migrate:up
-npm run cleanup:sessions
-docker compose up -d
-docker compose exec qchat-bot npm run migrate:up
-docker compose exec qchat-bot npm run cleanup:sessions
-```
-
 # Próximo Marco
 
-Melhorar observabilidade com correlation ID por ticket e padronização dos logs.
+Implementar correlation ID por ticket para rastreamento completo dos atendimentos.
