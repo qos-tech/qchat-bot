@@ -4,6 +4,7 @@ import { EvolutionMessagingGateway } from "../../src/infrastructure/gateways/evo
 const gateway = new EvolutionMessagingGateway();
 
 await gateway.sendButtons({
+  correlationId: "test:evolution:manual",
   phone: "554197035511",
   payload: {
     title: "Teste QoS",

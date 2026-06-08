@@ -4,6 +4,7 @@ import { QChatTicketTransferGateway } from "../../src/infrastructure/gateways/qc
 const gateway = new QChatTicketTransferGateway();
 
 await gateway.transfer({
+  correlationId: "test:qchat-transfer:manual",
   number: "554197035511",
   queueId: "1",
   status: "pending",

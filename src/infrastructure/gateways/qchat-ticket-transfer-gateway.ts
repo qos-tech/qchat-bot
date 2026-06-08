@@ -4,6 +4,7 @@ import type {
 } from "../../domain/bot/ticket-transfer-gateway.js";
 import { env } from "../../config/env.js";
 import { ExternalApiError } from "../../domain/errors/external-api-error.js";
+import { withRetry } from "../http/with-retry.js";
 
 export class QChatTicketTransferGateway implements TicketTransferGateway {
   private readonly apiUrl = env.QCHAT_API_URL;
@@ -24,39 +25,75 @@ export class QChatTicketTransferGateway implements TicketTransferGateway {
       queueId: params.queueId,
     });
 
-    const response = await fetch(`${this.apiUrl}/api/messages/send`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this.token}`,
+    await withRetry(
+      async () => {
+        const response = await fetch(`${this.apiUrl}/api/messages/send`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.token}`,
+          },
+          body: JSON.stringify({
+            number: params.number,
+            body: params.message,
+            queueId: params.queueId,
+            status: params.status,
+          }),
+        });
+
+        const responseBody = await response.text();
+
+        if (!response.ok) {
+          throw new ExternalApiError("Falha ao chamar QChat API", {
+            ...(params.correlationId
+              ? { correlationId: params.correlationId }
+              : {}),
+            provider: "qchat",
+            operation: "transfer_ticket",
+            status: response.status,
+            statusText: response.statusText,
+            responseBody,
+          });
+        }
+
+        this.validateQChatResponse(
+          responseBody,
+          response.status,
+          response.statusText,
+          params.correlationId,
+        );
       },
-      body: JSON.stringify({
-        number: params.number,
-        body: params.message,
-        queueId: params.queueId,
-        status: params.status,
-      }),
-    });
+      {
+        attempts: env.EXTERNAL_API_RETRY_ATTEMPTS,
+        baseDelayMs: env.EXTERNAL_API_RETRY_BASE_DELAY_MS,
 
-    const responseBody = await response.text();
+        shouldRetry: (error) => {
+          if (!(error instanceof ExternalApiError)) {
+            return true;
+          }
 
-    if (!response.ok) {
-      throw new ExternalApiError("Falha ao chamar QChat API", {
-        ...(params.correlationId
-          ? { correlationId: params.correlationId }
-          : {}),
-        provider: "qchat",
-        operation: "transfer_ticket",
-        status: response.status,
-        statusText: response.statusText,
-        responseBody,
-      });
-    }
+          return [408, 429, 500, 502, 503, 504].includes(
+            error.context.status ?? 0,
+          );
+        },
 
-    this.validateQChatResponse(
-      responseBody,
-      response.status,
-      response.statusText,
+        onRetry: ({ attempt, delayMs, error }) => {
+          console.warn("[QCHAT] retry", {
+            correlationId: params.correlationId,
+            attempt,
+            delayMs,
+            error:
+              error instanceof ExternalApiError
+                ? {
+                    provider: error.context.provider,
+                    operation: error.context.operation,
+                    status: error.context.status,
+                    statusText: error.context.statusText,
+                  }
+                : String(error),
+          });
+        },
+      },
     );
   }
 
@@ -64,6 +101,7 @@ export class QChatTicketTransferGateway implements TicketTransferGateway {
     responseBody: string,
     status: number,
     statusText: string,
+    correlationId?: string,
   ): void {
     if (!responseBody) return;
 
@@ -77,6 +115,7 @@ export class QChatTicketTransferGateway implements TicketTransferGateway {
 
     if (this.hasErrorResponse(data)) {
       throw new ExternalApiError("QChat retornou erro na resposta", {
+        ...(correlationId ? { correlationId } : {}),
         provider: "qchat",
         operation: "transfer_ticket",
         status,

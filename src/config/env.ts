@@ -30,6 +30,9 @@ const envSchema = z.object({
   BUSINESS_END_AFTERNOON: z.string().default("17:30"),
 
   SESSION_RETENTION_DAYS: z.coerce.number().default(7),
+
+  EXTERNAL_API_RETRY_ATTEMPTS: z.coerce.number().default(3),
+  EXTERNAL_API_RETRY_BASE_DELAY_MS: z.coerce.number().default(500),
 });
 
 const parsed = envSchema.safeParse(process.env);
