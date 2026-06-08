@@ -11,6 +11,7 @@
     "migrate:create": "node-pg-migrate create",
     "migrate:up": "node-pg-migrate up",
     "migrate:down": "node-pg-migrate down",
+    "cleanup:sessions": "tsx src/scripts/cleanup-sessions.ts",
     "test:normalizer": "tsx tests/manual/test-qchat-normalizer.ts",
     "test:session-repo": "tsx tests/manual/test-session-repository.ts",
     "test:business-hours": "tsx tests/manual/test-business-hours.ts",

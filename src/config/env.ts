@@ -28,6 +28,8 @@ const envSchema = z.object({
   BUSINESS_END_MORNING: z.string().default("12:00"),
   BUSINESS_START_AFTERNOON: z.string().default("13:00"),
   BUSINESS_END_AFTERNOON: z.string().default("17:30"),
+
+  SESSION_RETENTION_DAYS: z.coerce.number().default(7),
 });
 
 const parsed = envSchema.safeParse(process.env);

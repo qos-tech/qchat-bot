@@ -84,6 +84,27 @@
 - [x] Log de mensagens ignoradas
 - [x] Log de erros externos
 
+### Manutenção
+
+- [x] Criar índice em bot_sessions.updated_at
+- [x] Criar SessionMaintenanceRepository
+- [x] Criar PostgresSessionMaintenanceRepository
+- [x] Criar CleanupSessionsUseCase
+- [x] Criar script cleanup:sessions
+- [x] Tornar retenção configurável por ENV
+- [x] Testar limpeza de sessões
+
+### Deploy
+
+- [x] Criar Dockerfile
+- [x] Criar .dockerignore
+- [x] Criar docker-compose.yml
+- [x] Configurar variáveis de ambiente
+- [x] Configurar healthcheck
+- [x] Testar build local
+- [x] Testar execução via Docker
+- [x] Executar migrations dentro do container
+
 ### Testes
 
 - [x] Repository
@@ -113,38 +134,42 @@
 
 # Próxima Tarefa
 
-## Docker
+## Observabilidade Avançada
 
-- [ ] Criar Dockerfile
-- [ ] Criar .dockerignore
-- [ ] Criar docker-compose.yml
-- [ ] Configurar variáveis de ambiente
-- [ ] Configurar healthcheck
-- [ ] Testar build local
-- [ ] Testar execução via Docker
-- [ ] Documentar deploy
+- [ ] Criar correlation ID por ticket
+- [ ] Incluir ticketId em todos os logs relevantes
+- [ ] Padronizar formato dos logs do UseCase
+- [ ] Padronizar formato dos logs dos gateways
+- [ ] Facilitar rastreio completo de um atendimento
 
 ---
 
 # Produção
 
+## Manutenção
+
+- [ ] Agendar limpeza de sessões via cron do host
+- [ ] Documentar comando cleanup:sessions
+- [ ] Definir retenção padrão em produção
+
 ## Banco
 
 - [ ] Revisar índices
 - [ ] Revisar constraints
-- [ ] Planejar limpeza automática de sessões
-
-## Observabilidade
-
-- [ ] Correlation ID por ticket
-- [ ] Métricas básicas
-- [ ] Dashboard operacional
+- [ ] Revisar política de backup
 
 ## Resiliência
 
 - [ ] Estratégia de retry
 - [ ] Timeout configurável por integração
 - [ ] Circuit breaker (futuro)
+
+## Nginx / SSL
+
+- [ ] Configurar domínio público
+- [ ] Configurar proxy reverso
+- [ ] Configurar certificado SSL
+- [ ] Apontar webhook do QChat para URL pública
 
 ---
 
@@ -205,8 +230,21 @@ PostgreSQL
 
 ├─ Evolution (Menus)
 ├─ QChat (Transferências)
-└─ ExternalApiError
+├─ ExternalApiError
+└─ Cleanup Sessions
+
+# Comandos Importantes
+
+```bash
+npm run build
+npm run start
+npm run migrate:up
+npm run cleanup:sessions
+docker compose up -d
+docker compose exec qchat-bot npm run migrate:up
+docker compose exec qchat-bot npm run cleanup:sessions
+```
 
 # Próximo Marco
 
-Empacotar a aplicação para produção utilizando Docker e Docker Compose.
+Melhorar observabilidade com correlation ID por ticket e padronização dos logs.

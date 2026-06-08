@@ -1,4 +1,3 @@
-import "dotenv/config";
 import Fastify from "fastify";
 import { QChatPayloadNormalizer } from "../../infrastructure/providers/qchat/qchat-payload-normalizer.js";
 import { createHandleIncomingMessageUseCase } from "../../bootstrap/create-handle-incoming-message-use-case.js";
