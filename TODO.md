@@ -62,9 +62,9 @@
 - [x] Receber mensagem do QChat
 - [x] Criar sessão PostgreSQL
 - [x] Enviar menu Evolution
-- [ ] Receber clique do botão
-- [ ] Transferir ticket no QChat
-- [ ] Validar fluxo completo
+- [x] Receber clique do botão
+- [x] Transferir ticket no QChat
+- [x] Validar fluxo completo
 
 ---
 
@@ -145,6 +145,9 @@
 
 # Próxima Tarefa
 
-- [ ] Testar clique real do botão
-- [ ] Validar transferência real para fila
-- [ ] Validar fluxo ponta a ponta completo
+- [ ] Criar validação de ENV no startup
+- [ ] Criar `src/config/env.ts`
+- [ ] Validar variáveis obrigatórias com Zod
+- [ ] Substituir usos diretos de `process.env` por `env`
+- [ ] Testar startup com ENV válido
+- [ ] Testar startup com ENV faltando
