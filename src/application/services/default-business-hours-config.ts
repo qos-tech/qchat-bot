@@ -1,11 +1,12 @@
+import { env } from "../../config/env.js";
 import type { BusinessHoursConfig } from "./business-hours-service.js";
 
 export const defaultBusinessHoursConfig: BusinessHoursConfig = {
-  timezone: process.env.BUSINESS_HOURS_TIMEZONE ?? "America/Sao_Paulo",
+  timezone: env.BUSINESS_HOURS_TIMEZONE,
 
-  morningStart: process.env.BUSINESS_START_MORNING ?? "08:30",
-  morningEnd: process.env.BUSINESS_END_MORNING ?? "12:00",
+  morningStart: env.BUSINESS_START_MORNING,
+  morningEnd: env.BUSINESS_END_MORNING,
 
-  afternoonStart: process.env.BUSINESS_START_AFTERNOON ?? "13:00",
-  afternoonEnd: process.env.BUSINESS_END_AFTERNOON ?? "17:30",
+  afternoonStart: env.BUSINESS_START_AFTERNOON,
+  afternoonEnd: env.BUSINESS_END_AFTERNOON,
 };

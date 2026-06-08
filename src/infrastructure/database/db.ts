@@ -1,6 +1,7 @@
 import { Pool } from "pg";
+import { env } from "../../config/env.js";
 
-const connectionString = process.env.DATABASE_URL;
+const connectionString = env.DATABASE_URL;
 
 if (!connectionString) {
   throw new Error("DATABASE_URL não definida no ambiente");

@@ -1,10 +1,11 @@
 import type { ButtonMessage } from "../../domain/messaging/button-message.js";
 import type { MessagingGateway } from "../../domain/messaging/messaging-gateway.js";
+import { env } from "../../config/env.js";
 
 export class EvolutionMessagingGateway implements MessagingGateway {
-  private readonly apiUrl = process.env.EVOLUTION_API_URL ?? "";
-  private readonly apiKey = process.env.EVOLUTION_API_KEY ?? "";
-  private readonly instance = process.env.EVOLUTION_INSTANCE ?? "";
+  private readonly apiUrl = env.EVOLUTION_API_URL;
+  private readonly apiKey = env.EVOLUTION_API_KEY;
+  private readonly instance = env.EVOLUTION_INSTANCE;
 
   async sendText(params: {
     phone: string;

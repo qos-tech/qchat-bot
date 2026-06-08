@@ -2,10 +2,11 @@ import type {
   TicketStatus,
   TicketTransferGateway,
 } from "../../domain/bot/ticket-transfer-gateway.js";
+import { env } from "../../config/env.js";
 
 export class QChatTicketTransferGateway implements TicketTransferGateway {
-  private readonly apiUrl = process.env.QCHAT_API_URL ?? "";
-  private readonly token = process.env.QCHAT_API_TOKEN ?? "";
+  private readonly apiUrl = env.QCHAT_API_URL;
+  private readonly token = env.QCHAT_API_TOKEN;
 
   async transfer(params: {
     number: string;

@@ -43,6 +43,14 @@
 - [x] Integrar Normalizer → UseCase
 - [x] Tratar erros do webhook
 
+### Configuração
+
+- [x] Criar src/config/env.ts
+- [x] Validar variáveis obrigatórias com Zod
+- [x] Substituir usos diretos de process.env por env
+- [x] Validar ENV no startup
+- [x] Testar startup com ENV válido
+
 ### Testes
 
 - [x] Repository
@@ -68,24 +76,32 @@
 
 ---
 
-# Produção
+# Próxima Tarefa
 
-## Configuração
-
-- [ ] Validar ENV no startup
-- [ ] Revisar .env.example
-
-## Logs
+## Logs Estruturados
 
 - [ ] Log de mensagem recebida
 - [ ] Log de sessão criada
 - [ ] Log de menu enviado
-- [ ] Log de transferência
+- [ ] Log de transferência realizada
+- [ ] Log de erros externos
+- [ ] Padronizar formato dos logs
+
+---
+
+# Produção
 
 ## Erros
 
-- [ ] Tratamento de erro Evolution
-- [ ] Tratamento de erro QChat
+- [ ] Melhorar tratamento de erro Evolution
+- [ ] Melhorar tratamento de erro QChat
+- [ ] Definir estratégia de retry
+
+## Banco
+
+- [ ] Revisar índices
+- [ ] Revisar constraints
+- [ ] Planejar limpeza automática de sessões
 
 ---
 
@@ -93,15 +109,11 @@
 
 - [ ] Dockerfile
 - [ ] docker-compose.yml
-- [ ] Healthcheck container
+- [ ] Healthcheck do container
 
 ---
 
 # Melhorias Futuras
-
-## Sessões
-
-- [ ] Limpeza automática de sessões antigas
 
 ## Financeiro
 
@@ -126,6 +138,7 @@
 - [ ] Filas por empresa
 - [ ] Menus por empresa
 - [ ] Horários por empresa
+- [ ] Mensagens por empresa
 
 ---
 
@@ -143,11 +156,17 @@
 - 13:00 às 17:30
 - Feriados nacionais: fechado
 
-# Próxima Tarefa
+# Arquitetura Atual
 
-- [ ] Criar validação de ENV no startup
-- [ ] Criar `src/config/env.ts`
-- [ ] Validar variáveis obrigatórias com Zod
-- [ ] Substituir usos diretos de `process.env` por `env`
-- [ ] Testar startup com ENV válido
-- [ ] Testar startup com ENV faltando
+QChat
+↓
+Webhook Fastify
+↓
+Normalizer
+↓
+HandleIncomingMessageUseCase
+↓
+PostgreSQL
+
+├─ Evolution (menus)
+└─ QChat (transferências)

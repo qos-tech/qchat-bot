@@ -2,6 +2,7 @@ import "dotenv/config";
 import Fastify from "fastify";
 import { QChatPayloadNormalizer } from "../../infrastructure/providers/qchat/qchat-payload-normalizer.js";
 import { createHandleIncomingMessageUseCase } from "../../bootstrap/create-handle-incoming-message-use-case.js";
+import { env } from "../../config/env.js";
 
 const app = Fastify({
   logger: true,
@@ -39,8 +40,8 @@ app.post("/webhook/qchat", async (request, reply) => {
   }
 });
 
-const port = Number(process.env.PORT ?? 3000);
-const host = process.env.HOST ?? "0.0.0.0";
+const port = env.PORT;
+const host = env.HOST;
 
 await app.listen({
   port,
