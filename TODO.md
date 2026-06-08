@@ -51,6 +51,14 @@
 - [x] Validar ENV no startup
 - [x] Testar startup com ENV válido
 
+### Proteções
+
+- [x] Ignorar mensagens enviadas pelo próprio sistema
+- [x] Ignorar tickets já atribuídos a operadores
+- [x] Ignorar tickets fora da fila de triagem
+- [x] Ignorar sessões em waiting_human
+- [x] Evitar transferências duplicadas
+
 ### Testes
 
 - [x] Repository
@@ -78,24 +86,37 @@
 
 # Próxima Tarefa
 
+## Tratamento de Erros
+
+- [ ] Melhorar tratamento de erro Evolution
+- [ ] Melhorar tratamento de erro QChat
+- [ ] Logar erros externos com contexto
+- [ ] Padronizar mensagens de erro
+- [ ] Definir estratégia de retry
+
+---
+
+# Observabilidade
+
 ## Logs Estruturados
 
-- [ ] Log de mensagem recebida
-- [ ] Log de sessão criada
-- [ ] Log de menu enviado
-- [ ] Log de transferência realizada
+- [x] Log de mensagem recebida
+- [x] Log de sessão criada
+- [x] Log de sessão atualizada
+- [x] Log de menu enviado
+- [x] Log de transferência realizada
+- [x] Log de mensagens ignoradas
+
+### Pendente
+
 - [ ] Log de erros externos
-- [ ] Padronizar formato dos logs
+- [ ] Padronização completa dos logs
+- [ ] Correlation ID por ticket
+- [ ] Métricas básicas
 
 ---
 
 # Produção
-
-## Erros
-
-- [ ] Melhorar tratamento de erro Evolution
-- [ ] Melhorar tratamento de erro QChat
-- [ ] Definir estratégia de retry
 
 ## Banco
 
@@ -110,6 +131,8 @@
 - [ ] Dockerfile
 - [ ] docker-compose.yml
 - [ ] Healthcheck do container
+- [ ] Build de produção
+- [ ] Guia de deploy
 
 ---
 
@@ -168,5 +191,9 @@ HandleIncomingMessageUseCase
 ↓
 PostgreSQL
 
-├─ Evolution (menus)
-└─ QChat (transferências)
+├─ Evolution (Menus)
+└─ QChat (Transferências)
+
+# Próximo Marco
+
+Tratamento de erros dos gateways externos (Evolution e QChat) com logs completos e preparação para ambiente de produção.
