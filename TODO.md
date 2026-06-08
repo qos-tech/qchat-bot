@@ -1,197 +1,169 @@
 # TODO - QChat Bot
 
-## Último Marco Concluído
-
-### Core
+## Core
 
 - [x] Normalizador QChat
 - [x] Repositório PostgreSQL
 - [x] Business Hours Service
 - [x] Bootstrap da aplicação
 
-### Fluxos
+## Fluxos
 
 - [x] Menu principal
 - [x] Menu financeiro
 - [x] Menu fora do horário
 
-### Horário Comercial
+## Horário Comercial
 
 - [x] Suporte
 - [x] Financeiro
 - [x] Outros
 
-### Fora do Horário
+## Fora do Horário
 
 - [x] Suporte
 - [x] Outros
 
-### Integrações
+## Integrações
 
 - [x] Evolution Messaging Gateway
 - [x] QChat Ticket Transfer Gateway
 
-### HTTP
+## HTTP
 
-- [x] Criar servidor Fastify
-- [x] Criar rota GET /health
-- [x] Criar rota POST /webhook/qchat
+- [x] Servidor Fastify
+- [x] Health Check
+- [x] Webhook QChat
 
-### Webhook
+## Webhook
 
-- [x] Integrar Webhook → Normalizer
-- [x] Integrar Normalizer → UseCase
-- [x] Tratar erros do webhook
-- [x] Corrigir payload real do QChat
-- [x] Suportar payload direto e payload encapsulado
+- [x] Integração Webhook → Normalizer
+- [x] Integração Normalizer → UseCase
+- [x] Tratamento de erros
+- [x] Compatibilidade com payload real do QChat
+- [x] Compatibilidade com payload encapsulado
 
-### Configuração
+## Configuração
 
-- [x] Criar src/config/env.ts
-- [x] Validar variáveis obrigatórias com Zod
-- [x] Substituir usos diretos de process.env por env
-- [x] Validar ENV no startup
-- [x] Testar startup com ENV válido
+- [x] env.ts
+- [x] Validação Zod
+- [x] Remoção de process.env direto
+- [x] Startup validation
 
-### Proteções
+## Proteções
 
-- [x] Ignorar mensagens enviadas pelo próprio sistema
-- [x] Ignorar tickets já atribuídos a operadores
-- [x] Ignorar tickets fora da fila de triagem
-- [x] Ignorar sessões em waiting_human
+- [x] Ignorar mensagens do próprio sistema
+- [x] Ignorar tickets atribuídos
+- [x] Ignorar filas fora da triagem
 - [x] Evitar transferências duplicadas
-- [x] Evitar mudança de estado após falha de integração
-- [x] Recuperar tickets reutilizados pelo QChat
-- [x] Resetar sessões waiting_human ao retornar para triagem
+- [x] Evitar alteração de estado após falha
+- [x] Recuperação de tickets reutilizados
+- [x] Reset de sessões waiting_human ao retornar para triagem
 
-### Tratamento de Erros
+## Tratamento de Erros
 
-- [x] Melhorar tratamento de erro Evolution
-- [x] Melhorar tratamento de erro QChat
-- [x] Criar ExternalApiError
-- [x] Diferenciar erro interno (500) de erro externo (502)
-- [x] Logar erros externos com contexto
-- [x] Padronizar mensagens de erro
-- [x] Validar respostas HTTP
-- [x] Validar respostas JSON de erro
-- [ ] Definir estratégia de retry
+- [x] ExternalApiError
+- [x] Erros Evolution
+- [x] Erros QChat
+- [x] Diferenciar 500 e 502
+- [x] Logs contextualizados
+- [x] Respostas HTTP padronizadas
+- [ ] Estratégia de retry
 
-### Observabilidade
+## Observabilidade
 
-#### Logs Estruturados
+### Logs
 
-- [x] Log de mensagem recebida
-- [x] Log de sessão criada
-- [x] Log de sessão atualizada
-- [x] Log de menu enviado
-- [x] Log de transferência realizada
-- [x] Log de mensagens ignoradas
-- [x] Log de erros externos
+- [x] message_received
+- [x] session_checked
+- [x] session_saved
+- [x] session_deleted
+- [x] menu_sent
+- [x] ticket_transferred
+- [x] message_ignored
+- [x] business_hours_checked
+- [x] message_unhandled
+- [x] external_api_error
 
-### Manutenção
+### Correlation ID
 
-- [x] Criar índice em bot_sessions.updated_at
-- [x] Criar SessionMaintenanceRepository
-- [x] Criar PostgresSessionMaintenanceRepository
-- [x] Criar CleanupSessionsUseCase
-- [x] Criar script cleanup:sessions
-- [x] Tornar retenção configurável por ENV
-- [x] Testar limpeza de sessões
+- [x] Criar correlation ID por atendimento
+- [x] Incluir correlation ID nos logs do UseCase
+- [x] Incluir correlation ID nos gateways
+- [x] Propagar correlation ID para ExternalApiError
+- [x] Rastreabilidade ponta a ponta
 
-### Deploy
+## Banco
 
-- [x] Criar Dockerfile
-- [x] Criar .dockerignore
-- [x] Criar docker-compose.yml
-- [x] Configurar variáveis de ambiente
-- [x] Configurar healthcheck
-- [x] Testar build local
-- [x] Testar execução via Docker
-- [x] Executar migrations dentro do container
-- [x] Testar deploy em servidor
+- [x] Índice em updated_at
+- [x] SessionMaintenanceRepository
+- [x] CleanupSessionsUseCase
+- [x] cleanup:sessions
+- [x] Retenção configurável por ENV
 
-### Testes
+## Deploy
+
+- [x] Dockerfile
+- [x] .dockerignore
+- [x] docker-compose
+- [x] Healthcheck
+- [x] Build local
+- [x] Deploy em servidor
+- [x] PostgreSQL externo
+- [x] Migrations dentro do container
+
+## Testes
 
 - [x] Repository
 - [x] Business Hours
 - [x] Use Case
-- [x] Evolution Real
-- [x] QChat Real
+- [x] Evolution real
+- [x] QChat real
 - [x] Bootstrap
-- [x] Webhook inicial real
-- [x] Falha simulada Evolution
-- [x] Falha simulada QChat
-- [x] Ticket reutilizado após fechamento
-
----
-
-# MVP
-
-## Teste Ponta a Ponta
-
-- [x] Receber mensagem do QChat
-- [x] Criar sessão PostgreSQL
-- [x] Enviar menu Evolution
-- [x] Receber clique do botão
-- [x] Transferir ticket no QChat
-- [x] Validar fluxo completo
-- [x] Validar reabertura de atendimento
-
----
-
-# Próxima Tarefa
-
-## Observabilidade Avançada
-
-- [ ] Criar correlation ID por ticket
-- [ ] Incluir ticketId em todos os logs relevantes
-- [ ] Padronizar formato dos logs do UseCase
-- [ ] Padronizar formato dos logs dos gateways
-- [ ] Facilitar rastreio completo de um atendimento
+- [x] Webhook real
+- [x] Simulação de falhas
+- [x] Reabertura de atendimento
 
 ---
 
 # Produção
 
-## Manutenção
+## Pendente
 
-- [ ] Agendar limpeza de sessões via cron do host
-- [ ] Documentar comando cleanup:sessions
-- [ ] Definir retenção padrão em produção
-
-## Banco
-
-- [ ] Revisar constraints
-- [ ] Revisar política de backup
-
-## Resiliência
-
-- [ ] Estratégia de retry
-- [ ] Timeout configurável por integração
-- [ ] Circuit breaker (futuro)
-
-## Nginx / SSL
-
+- [ ] Agendar cleanup:sessions via cron
+- [ ] Definir retenção final
+- [ ] Revisar constraints do banco
+- [ ] Revisar backup
 - [ ] Configurar domínio público
-- [ ] Configurar proxy reverso
-- [ ] Configurar certificado SSL
-- [ ] Apontar webhook do QChat para URL pública
+- [ ] Configurar SSL
+- [ ] Apontar webhook definitivo
 
 ---
 
-# Melhorias Futuras
+# Próximo Marco
 
-## Financeiro
+## Integração GLPI
 
-- [ ] Consulta de boleto
-- [ ] Consulta de NF
-- [ ] Consulta por CNPJ
+### Fase 1
 
-## GLPI
-
+- [ ] Validar usuário por telefone
+- [ ] Buscar usuário no GLPI
 - [ ] Abrir chamado
+- [ ] Retornar número do chamado
+
+### Fase 2
+
 - [ ] Consultar chamado
-- [ ] Atualizar chamado
+- [ ] Adicionar acompanhamento
+- [ ] Encerrar chamado
+
+### Fase 3
+
+- [ ] Integração completa Bot ↔ GLPI
+
+---
+
+# Futuro
 
 ## IA
 
@@ -205,9 +177,3 @@
 - [ ] Menus por empresa
 - [ ] Horários por empresa
 - [ ] Mensagens por empresa
-
----
-
-# Próximo Marco
-
-Implementar correlation ID por ticket para rastreamento completo dos atendimentos.
