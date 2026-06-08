@@ -3,6 +3,7 @@ import type {
   TicketTransferGateway,
 } from "../../domain/bot/ticket-transfer-gateway.js";
 import { env } from "../../config/env.js";
+import { ExternalApiError } from "../../domain/errors/external-api-error.js";
 
 export class QChatTicketTransferGateway implements TicketTransferGateway {
   private readonly apiUrl = env.QCHAT_API_URL;
@@ -30,13 +31,64 @@ export class QChatTicketTransferGateway implements TicketTransferGateway {
       }),
     });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
+    const responseBody = await response.text();
 
-      throw new Error(
-        `QChat API error: ${response.status} ${response.statusText} - ${errorBody}`,
-      );
+    if (!response.ok) {
+      throw new ExternalApiError("Falha ao chamar QChat API", {
+        provider: "qchat",
+        operation: "transfer_ticket",
+        status: response.status,
+        statusText: response.statusText,
+        responseBody,
+      });
     }
+
+    this.validateQChatResponse(
+      responseBody,
+      response.status,
+      response.statusText,
+    );
+  }
+
+  private validateQChatResponse(
+    responseBody: string,
+    status: number,
+    statusText: string,
+  ): void {
+    if (!responseBody) return;
+
+    let data: unknown;
+
+    try {
+      data = JSON.parse(responseBody);
+    } catch {
+      return;
+    }
+
+    if (this.hasErrorResponse(data)) {
+      throw new ExternalApiError("QChat retornou erro na resposta", {
+        provider: "qchat",
+        operation: "transfer_ticket",
+        status,
+        statusText,
+        responseBody,
+      });
+    }
+  }
+
+  private hasErrorResponse(data: unknown): boolean {
+    if (!data || typeof data !== "object") return false;
+
+    const response = data as Record<string, unknown>;
+
+    return (
+      response.error === true ||
+      response.status === "error" ||
+      response.success === false ||
+      typeof response.error === "string" ||
+      (typeof response.message === "string" &&
+        response.message.toLowerCase().includes("token"))
+    );
   }
 
   private validateConfig(): void {

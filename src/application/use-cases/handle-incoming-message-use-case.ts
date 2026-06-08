@@ -96,6 +96,17 @@ export class HandleIncomingMessageUseCase {
     });
 
     if (!session && businessHours.isOpen) {
+      await this.messaging.sendButtons({
+        phone: message.phone,
+        ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
+        payload: mainMenu,
+      });
+
+      console.info("[BOT] menu_sent", {
+        ticketId: message.ticketId,
+        menu: "main",
+      });
+
       await this.sessions.save({
         ticketId: String(message.ticketId),
         provider: message.provider,
@@ -111,17 +122,6 @@ export class HandleIncomingMessageUseCase {
       console.info("[BOT] session_saved", {
         ticketId: message.ticketId,
         stage: "awaiting_main_menu",
-      });
-
-      await this.messaging.sendButtons({
-        phone: message.phone,
-        ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
-        payload: mainMenu,
-      });
-
-      console.info("[BOT] menu_sent", {
-        ticketId: message.ticketId,
-        menu: "main",
       });
 
       return;
@@ -148,6 +148,17 @@ export class HandleIncomingMessageUseCase {
     }
 
     if (!session && !businessHours.isOpen) {
+      await this.messaging.sendButtons({
+        phone: message.phone,
+        ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
+        payload: afterHoursMenu,
+      });
+
+      console.info("[BOT] menu_sent", {
+        ticketId: message.ticketId,
+        menu: "after_hours",
+      });
+
       await this.sessions.save({
         ticketId: String(message.ticketId),
         provider: message.provider,
@@ -164,17 +175,6 @@ export class HandleIncomingMessageUseCase {
         ticketId: message.ticketId,
         stage: "awaiting_main_menu",
         mode: "after_hours",
-      });
-
-      await this.messaging.sendButtons({
-        phone: message.phone,
-        ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
-        payload: afterHoursMenu,
-      });
-
-      console.info("[BOT] menu_sent", {
-        ticketId: message.ticketId,
-        menu: "after_hours",
       });
 
       return;
@@ -201,26 +201,6 @@ export class HandleIncomingMessageUseCase {
     }
 
     if (message.buttonId === "option_support" && !businessHours.isOpen) {
-      await this.sessions.save({
-        ticketId: String(message.ticketId),
-        provider: message.provider,
-        ...(message.companyId ? { companyId: String(message.companyId) } : {}),
-        ...(message.whatsappId
-          ? { whatsappId: String(message.whatsappId) }
-          : {}),
-        ...(message.contactId ? { contactId: String(message.contactId) } : {}),
-        phone: message.phone,
-        stage: "waiting_human",
-        intent: "support",
-      });
-
-      console.info("[BOT] session_saved", {
-        ticketId: message.ticketId,
-        stage: "waiting_human",
-        intent: "support",
-        mode: "after_hours",
-      });
-
       await this.transfer.transfer({
         number: message.phone,
         queueId: this.queues.supportQueueId,
@@ -235,10 +215,6 @@ export class HandleIncomingMessageUseCase {
         mode: "after_hours",
       });
 
-      return;
-    }
-
-    if (message.buttonId === "option_others" && !businessHours.isOpen) {
       await this.sessions.save({
         ticketId: String(message.ticketId),
         provider: message.provider,
@@ -249,16 +225,20 @@ export class HandleIncomingMessageUseCase {
         ...(message.contactId ? { contactId: String(message.contactId) } : {}),
         phone: message.phone,
         stage: "waiting_human",
-        intent: "other",
+        intent: "support",
       });
 
       console.info("[BOT] session_saved", {
         ticketId: message.ticketId,
         stage: "waiting_human",
-        intent: "other",
+        intent: "support",
         mode: "after_hours",
       });
 
+      return;
+    }
+
+    if (message.buttonId === "option_others" && !businessHours.isOpen) {
       await this.transfer.transfer({
         number: message.phone,
         queueId: this.queues.otherQueueId,
@@ -273,10 +253,6 @@ export class HandleIncomingMessageUseCase {
         mode: "after_hours",
       });
 
-      return;
-    }
-
-    if (message.buttonId === "option_support" && businessHours.isOpen) {
       await this.sessions.save({
         ticketId: String(message.ticketId),
         provider: message.provider,
@@ -287,15 +263,20 @@ export class HandleIncomingMessageUseCase {
         ...(message.contactId ? { contactId: String(message.contactId) } : {}),
         phone: message.phone,
         stage: "waiting_human",
-        intent: "support",
+        intent: "other",
       });
 
       console.info("[BOT] session_saved", {
         ticketId: message.ticketId,
         stage: "waiting_human",
-        intent: "support",
+        intent: "other",
+        mode: "after_hours",
       });
 
+      return;
+    }
+
+    if (message.buttonId === "option_support" && businessHours.isOpen) {
       await this.transfer.transfer({
         number: message.phone,
         queueId: this.queues.supportQueueId,
@@ -309,10 +290,6 @@ export class HandleIncomingMessageUseCase {
         intent: "support",
       });
 
-      return;
-    }
-
-    if (message.buttonId === "option_others" && businessHours.isOpen) {
       await this.sessions.save({
         ticketId: String(message.ticketId),
         provider: message.provider,
@@ -323,15 +300,19 @@ export class HandleIncomingMessageUseCase {
         ...(message.contactId ? { contactId: String(message.contactId) } : {}),
         phone: message.phone,
         stage: "waiting_human",
-        intent: "other",
+        intent: "support",
       });
 
       console.info("[BOT] session_saved", {
         ticketId: message.ticketId,
         stage: "waiting_human",
-        intent: "other",
+        intent: "support",
       });
 
+      return;
+    }
+
+    if (message.buttonId === "option_others" && businessHours.isOpen) {
       await this.transfer.transfer({
         number: message.phone,
         queueId: this.queues.otherQueueId,
@@ -345,10 +326,40 @@ export class HandleIncomingMessageUseCase {
         intent: "other",
       });
 
+      await this.sessions.save({
+        ticketId: String(message.ticketId),
+        provider: message.provider,
+        ...(message.companyId ? { companyId: String(message.companyId) } : {}),
+        ...(message.whatsappId
+          ? { whatsappId: String(message.whatsappId) }
+          : {}),
+        ...(message.contactId ? { contactId: String(message.contactId) } : {}),
+        phone: message.phone,
+        stage: "waiting_human",
+        intent: "other",
+      });
+
+      console.info("[BOT] session_saved", {
+        ticketId: message.ticketId,
+        stage: "waiting_human",
+        intent: "other",
+      });
+
       return;
     }
 
     if (message.buttonId === "option_finance" && businessHours.isOpen) {
+      await this.messaging.sendButtons({
+        phone: message.phone,
+        ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
+        payload: financeMenu,
+      });
+
+      console.info("[BOT] menu_sent", {
+        ticketId: message.ticketId,
+        menu: "finance",
+      });
+
       await this.sessions.save({
         ticketId: String(message.ticketId),
         provider: message.provider,
@@ -366,17 +377,6 @@ export class HandleIncomingMessageUseCase {
         ticketId: message.ticketId,
         stage: "awaiting_finance_menu",
         intent: "finance",
-      });
-
-      await this.messaging.sendButtons({
-        phone: message.phone,
-        ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
-        payload: financeMenu,
-      });
-
-      console.info("[BOT] menu_sent", {
-        ticketId: message.ticketId,
-        menu: "finance",
       });
 
       return;
@@ -416,6 +416,19 @@ export class HandleIncomingMessageUseCase {
 
       const intent = intentMap[message.buttonId as keyof typeof intentMap];
 
+      await this.transfer.transfer({
+        number: message.phone,
+        queueId: this.queues.financeQueueId,
+        status: "pending",
+        message: FINANCE_CONFIRMATION_MESSAGE,
+      });
+
+      console.info("[BOT] ticket_transferred", {
+        ticketId: message.ticketId,
+        queueId: this.queues.financeQueueId,
+        intent,
+      });
+
       await this.sessions.save({
         ticketId: String(message.ticketId),
         provider: message.provider,
@@ -432,19 +445,6 @@ export class HandleIncomingMessageUseCase {
       console.info("[BOT] session_saved", {
         ticketId: message.ticketId,
         stage: "waiting_human",
-        intent,
-      });
-
-      await this.transfer.transfer({
-        number: message.phone,
-        queueId: this.queues.financeQueueId,
-        status: "pending",
-        message: FINANCE_CONFIRMATION_MESSAGE,
-      });
-
-      console.info("[BOT] ticket_transferred", {
-        ticketId: message.ticketId,
-        queueId: this.queues.financeQueueId,
         intent,
       });
 

@@ -58,6 +58,31 @@
 - [x] Ignorar tickets fora da fila de triagem
 - [x] Ignorar sessões em waiting_human
 - [x] Evitar transferências duplicadas
+- [x] Evitar mudança de estado após falha de integração
+
+### Tratamento de Erros
+
+- [x] Melhorar tratamento de erro Evolution
+- [x] Melhorar tratamento de erro QChat
+- [x] Criar ExternalApiError
+- [x] Diferenciar erro interno (500) de erro externo (502)
+- [x] Logar erros externos com contexto
+- [x] Padronizar mensagens de erro
+- [x] Validar respostas HTTP
+- [x] Validar respostas JSON de erro
+- [ ] Definir estratégia de retry
+
+### Observabilidade
+
+#### Logs Estruturados
+
+- [x] Log de mensagem recebida
+- [x] Log de sessão criada
+- [x] Log de sessão atualizada
+- [x] Log de menu enviado
+- [x] Log de transferência realizada
+- [x] Log de mensagens ignoradas
+- [x] Log de erros externos
 
 ### Testes
 
@@ -68,6 +93,8 @@
 - [x] QChat Real
 - [x] Bootstrap
 - [x] Webhook inicial real
+- [x] Falha simulada Evolution
+- [x] Falha simulada QChat
 
 ---
 
@@ -86,33 +113,16 @@
 
 # Próxima Tarefa
 
-## Tratamento de Erros
+## Docker
 
-- [ ] Melhorar tratamento de erro Evolution
-- [ ] Melhorar tratamento de erro QChat
-- [ ] Logar erros externos com contexto
-- [ ] Padronizar mensagens de erro
-- [ ] Definir estratégia de retry
-
----
-
-# Observabilidade
-
-## Logs Estruturados
-
-- [x] Log de mensagem recebida
-- [x] Log de sessão criada
-- [x] Log de sessão atualizada
-- [x] Log de menu enviado
-- [x] Log de transferência realizada
-- [x] Log de mensagens ignoradas
-
-### Pendente
-
-- [ ] Log de erros externos
-- [ ] Padronização completa dos logs
-- [ ] Correlation ID por ticket
-- [ ] Métricas básicas
+- [ ] Criar Dockerfile
+- [ ] Criar .dockerignore
+- [ ] Criar docker-compose.yml
+- [ ] Configurar variáveis de ambiente
+- [ ] Configurar healthcheck
+- [ ] Testar build local
+- [ ] Testar execução via Docker
+- [ ] Documentar deploy
 
 ---
 
@@ -124,15 +134,17 @@
 - [ ] Revisar constraints
 - [ ] Planejar limpeza automática de sessões
 
----
+## Observabilidade
 
-# Deploy
+- [ ] Correlation ID por ticket
+- [ ] Métricas básicas
+- [ ] Dashboard operacional
 
-- [ ] Dockerfile
-- [ ] docker-compose.yml
-- [ ] Healthcheck do container
-- [ ] Build de produção
-- [ ] Guia de deploy
+## Resiliência
+
+- [ ] Estratégia de retry
+- [ ] Timeout configurável por integração
+- [ ] Circuit breaker (futuro)
 
 ---
 
@@ -192,8 +204,9 @@ HandleIncomingMessageUseCase
 PostgreSQL
 
 ├─ Evolution (Menus)
-└─ QChat (Transferências)
+├─ QChat (Transferências)
+└─ ExternalApiError
 
 # Próximo Marco
 
-Tratamento de erros dos gateways externos (Evolution e QChat) com logs completos e preparação para ambiente de produção.
+Empacotar a aplicação para produção utilizando Docker e Docker Compose.
