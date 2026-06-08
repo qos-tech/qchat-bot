@@ -379,8 +379,8 @@
                         "utm": null
                     },
                     "selectedCarouselCardIndex": null,
-                    "selectedDisplayText": "✅ Confirmar",
-                    "selectedID": "opt_confirm",
+                    "selectedDisplayText": "Suporte Técnico",
+                    "selectedID": "option_support",
                     "selectedIndex": 0
                 },
                 "templateMessage": null,
@@ -390,21 +390,21 @@
                 "viewOnceMessageV2Extension": null
             },
             "messageTimestamp": 1780693747,
-            "body": "✅ Confirmar"
+            "body": "Suporte Técnico"
         },
         "ticket": {
             "flowId": null,
             "id": 15551,
             "status": "pending",
             "unreadMessages": 1,
-            "lastMessage": "✅ Confirmar",
+            "lastMessage": "Suporte Técnico",
             "isGroup": false,
             "userId": null,
             "participantIds": [],
             "contactId": 84,
             "whatsappId": 122,
             "unreadMessagesCount": 12,
-            "queueId": 1,
+            "queueId": 46,
             "isBot": false,
             "etapa": "96cc9033-87c7-4975-8d82-dc04f4c6add1",
             "chatbot": false,

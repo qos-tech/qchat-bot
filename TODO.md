@@ -31,6 +31,18 @@
 - [x] Evolution Messaging Gateway
 - [x] QChat Ticket Transfer Gateway
 
+### HTTP
+
+- [x] Criar servidor Fastify
+- [x] Criar rota GET /health
+- [x] Criar rota POST /webhook/qchat
+
+### Webhook
+
+- [x] Integrar Webhook → Normalizer
+- [x] Integrar Normalizer → UseCase
+- [x] Tratar erros do webhook
+
 ### Testes
 
 - [x] Repository
@@ -39,28 +51,17 @@
 - [x] Evolution Real
 - [x] QChat Real
 - [x] Bootstrap
+- [x] Webhook inicial real
 
 ---
 
 # MVP
 
-## HTTP
-
-- [ ] Criar servidor Fastify
-- [ ] Criar rota GET /health
-- [ ] Criar rota POST /webhook/qchat
-
-## Integração
-
-- [ ] Integrar Webhook → Normalizer
-- [ ] Integrar Normalizer → UseCase
-- [ ] Tratar erros do webhook
-
 ## Teste Ponta a Ponta
 
-- [ ] Receber mensagem do QChat
-- [ ] Criar sessão PostgreSQL
-- [ ] Enviar menu Evolution
+- [x] Receber mensagem do QChat
+- [x] Criar sessão PostgreSQL
+- [x] Enviar menu Evolution
 - [ ] Receber clique do botão
 - [ ] Transferir ticket no QChat
 - [ ] Validar fluxo completo
@@ -144,6 +145,6 @@
 
 # Próxima Tarefa
 
-- [ ] Criar servidor Fastify
-- [ ] Criar GET /health
-- [ ] Criar POST /webhook/qchat
+- [ ] Testar clique real do botão
+- [ ] Validar transferência real para fila
+- [ ] Validar fluxo ponta a ponta completo
