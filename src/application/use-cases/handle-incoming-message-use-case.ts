@@ -75,9 +75,7 @@ export class HandleIncomingMessageUseCase {
       return;
     }
 
-    const session = await this.sessions.findByTicketId(
-      String(message.ticketId),
-    );
+    let session = await this.sessions.findByTicketId(String(message.ticketId));
 
     console.info("[BOT] session_checked", {
       ticketId: message.ticketId,
@@ -87,13 +85,16 @@ export class HandleIncomingMessageUseCase {
     });
 
     if (session?.stage === "waiting_human") {
-      console.info("[BOT] message_ignored", {
-        reason: "waiting_human",
+      await this.sessions.deleteByTicketId(String(message.ticketId));
+
+      console.info("[BOT] session_deleted", {
+        reason: "stale_waiting_human_session",
         ticketId: message.ticketId,
-        intent: session.intent,
+        queueId: message.queueId,
+        userId: message.userId,
       });
 
-      return;
+      session = null;
     }
 
     const businessHours = await this.businessHours.check(
