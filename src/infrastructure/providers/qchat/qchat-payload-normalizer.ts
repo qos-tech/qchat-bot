@@ -5,7 +5,7 @@ import type { NormalizedMedia } from "../../../domain/messaging/normalized-media
 
 export class QChatPayloadNormalizer implements IncomingMessageNormalizer {
   normalize(payload: any): NormalizedIncomingMessage {
-    const body = payload.body;
+    const body = payload?.body ?? payload;
     const msg = body?.msg;
     const ticket = body?.ticket;
     const message = msg?.message;
@@ -16,20 +16,20 @@ export class QChatPayloadNormalizer implements IncomingMessageNormalizer {
 
     return {
       provider: "qchat",
-      messageId: String(msg?.key?.id),
+      messageId: String(msg?.key?.id ?? ""),
 
       ...(ticket?.id ? { ticketId: ticket.id } : {}),
       ...(ticket?.contactId ? { contactId: ticket.contactId } : {}),
       ...(ticket?.companyId ? { companyId: ticket.companyId } : {}),
       ...(ticket?.whatsappId ? { whatsappId: ticket.whatsappId } : {}),
 
-      phone: String(ticket?.contact?.number),
+      phone: String(ticket?.contact?.number ?? msg?.key?.remoteJid ?? ""),
       ...(ticket?.contact?.name ? { name: ticket.contact.name } : {}),
 
       kind,
       text,
 
-      fromMe: Boolean(msg?.key?.fromMe),
+      fromMe: Boolean(msg?.key?.fromMe ?? ticket?.fromMe),
 
       ...(message?.templateButtonReplyMessage?.selectedID
         ? { buttonId: message.templateButtonReplyMessage.selectedID }
@@ -62,11 +62,13 @@ export class QChatPayloadNormalizer implements IncomingMessageNormalizer {
     if (message?.documentMessage) return "document";
     if (message?.stickerMessage) return "sticker";
     if (message?.locationMessage) return "location";
-    if (message?.contactMessage || message?.contactsArrayMessage)
+    if (message?.contactMessage || message?.contactsArrayMessage) {
       return "contact";
+    }
     if (message?.reactionMessage) return "reaction";
-    if (message?.conversation || message?.extendedTextMessage?.text)
+    if (message?.conversation || message?.extendedTextMessage?.text) {
       return "text";
+    }
 
     return "unknown";
   }
@@ -120,6 +122,7 @@ export class QChatPayloadNormalizer implements IncomingMessageNormalizer {
       ...(media.fileName ? { fileName: media.fileName } : {}),
       ...(media.title ? { title: media.title } : {}),
       ...(media.URL ? { url: media.URL } : {}),
+      ...(media.url ? { url: media.url } : {}),
       ...(media.caption ? { caption: media.caption } : {}),
       ...(media.fileLength ? { size: Number(media.fileLength) } : {}),
       ...(media.seconds ? { durationSeconds: Number(media.seconds) } : {}),

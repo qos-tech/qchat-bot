@@ -43,6 +43,17 @@ export class HandleIncomingMessageUseCase {
       return;
     }
 
+    if (message.status === "closed") {
+      await this.sessions.deleteByTicketId(String(message.ticketId));
+
+      console.info("[BOT] session_deleted", {
+        reason: "ticket_closed",
+        ticketId: message.ticketId,
+      });
+
+      return;
+    }
+
     if (message.userId !== null && message.userId !== undefined) {
       console.info("[BOT] message_ignored", {
         reason: "already_assigned",
