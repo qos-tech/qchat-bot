@@ -20,7 +20,24 @@ app.get("/health", async () => {
 
 app.post("/webhook/qchat", async (request, reply) => {
   try {
+    request.log.info({
+      event: "webhook_received",
+      route: "/webhook/qchat",
+    });
+
     const normalizedMessage = normalizer.normalize(request.body);
+
+    request.log.info({
+      event: "message_normalized",
+      provider: normalizedMessage.provider,
+      kind: normalizedMessage.kind,
+      ticketId: normalizedMessage.ticketId,
+      phone: normalizedMessage.phone,
+      queueId: normalizedMessage.queueId,
+      userId: normalizedMessage.userId,
+      fromMe: normalizedMessage.fromMe,
+      buttonId: normalizedMessage.buttonId,
+    });
 
     await handleIncomingMessageUseCase.execute(normalizedMessage);
 
@@ -29,8 +46,9 @@ app.post("/webhook/qchat", async (request, reply) => {
     });
   } catch (error) {
     request.log.error({
-      error,
+      event: "webhook_error",
       route: "/webhook/qchat",
+      error,
     });
 
     return reply.status(500).send({
