@@ -120,6 +120,7 @@ export class HandleIncomingMessageUseCase {
 
     if (!session && businessHours.isOpen) {
       await this.messaging.sendButtons({
+        correlationId,
         phone: message.phone,
         ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
         payload: mainMenu,
@@ -158,6 +159,7 @@ export class HandleIncomingMessageUseCase {
       businessHours.isOpen
     ) {
       await this.messaging.sendButtons({
+        correlationId,
         phone: message.phone,
         ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
         payload: mainMenu,
@@ -175,6 +177,7 @@ export class HandleIncomingMessageUseCase {
 
     if (!session && !businessHours.isOpen) {
       await this.messaging.sendButtons({
+        correlationId,
         phone: message.phone,
         ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
         payload: afterHoursMenu,
@@ -214,6 +217,7 @@ export class HandleIncomingMessageUseCase {
       !businessHours.isOpen
     ) {
       await this.messaging.sendButtons({
+        correlationId,
         phone: message.phone,
         ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
         payload: afterHoursMenu,
@@ -231,6 +235,7 @@ export class HandleIncomingMessageUseCase {
 
     if (message.buttonId === "option_support" && !businessHours.isOpen) {
       await this.transfer.transfer({
+        correlationId,
         number: message.phone,
         queueId: this.queues.supportQueueId,
         status: "pending",
@@ -271,6 +276,7 @@ export class HandleIncomingMessageUseCase {
 
     if (message.buttonId === "option_others" && !businessHours.isOpen) {
       await this.transfer.transfer({
+        correlationId,
         number: message.phone,
         queueId: this.queues.otherQueueId,
         status: "pending",
@@ -311,6 +317,7 @@ export class HandleIncomingMessageUseCase {
 
     if (message.buttonId === "option_support" && businessHours.isOpen) {
       await this.transfer.transfer({
+        correlationId,
         number: message.phone,
         queueId: this.queues.supportQueueId,
         status: "pending",
@@ -349,6 +356,7 @@ export class HandleIncomingMessageUseCase {
 
     if (message.buttonId === "option_others" && businessHours.isOpen) {
       await this.transfer.transfer({
+        correlationId,
         number: message.phone,
         queueId: this.queues.otherQueueId,
         status: "pending",
@@ -387,6 +395,7 @@ export class HandleIncomingMessageUseCase {
 
     if (message.buttonId === "option_finance" && businessHours.isOpen) {
       await this.messaging.sendButtons({
+        correlationId,
         phone: message.phone,
         ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
         payload: financeMenu,
@@ -427,6 +436,7 @@ export class HandleIncomingMessageUseCase {
       businessHours.isOpen
     ) {
       await this.messaging.sendButtons({
+        correlationId,
         phone: message.phone,
         ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
         payload: financeMenu,
@@ -457,6 +467,7 @@ export class HandleIncomingMessageUseCase {
       const intent = intentMap[message.buttonId as keyof typeof intentMap];
 
       await this.transfer.transfer({
+        correlationId,
         number: message.phone,
         queueId: this.queues.financeQueueId,
         status: "pending",

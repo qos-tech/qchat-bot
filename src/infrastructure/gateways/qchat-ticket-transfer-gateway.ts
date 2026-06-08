@@ -10,12 +10,19 @@ export class QChatTicketTransferGateway implements TicketTransferGateway {
   private readonly token = env.QCHAT_API_TOKEN;
 
   async transfer(params: {
+    correlationId?: string;
     number: string;
     queueId: string | number;
     message: string;
     status: TicketStatus;
   }): Promise<void> {
     this.validateConfig();
+
+    console.info("[QCHAT] transfer_ticket", {
+      correlationId: params.correlationId,
+      number: params.number,
+      queueId: params.queueId,
+    });
 
     const response = await fetch(`${this.apiUrl}/api/messages/send`, {
       method: "POST",
@@ -35,6 +42,9 @@ export class QChatTicketTransferGateway implements TicketTransferGateway {
 
     if (!response.ok) {
       throw new ExternalApiError("Falha ao chamar QChat API", {
+        ...(params.correlationId
+          ? { correlationId: params.correlationId }
+          : {}),
         provider: "qchat",
         operation: "transfer_ticket",
         status: response.status,

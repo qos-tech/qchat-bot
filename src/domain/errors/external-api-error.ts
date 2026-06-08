@@ -2,6 +2,7 @@ export class ExternalApiError extends Error {
   constructor(
     message: string,
     public readonly context: {
+      correlationId?: string;
       provider: "evolution" | "qchat";
       status?: number;
       statusText?: string;

@@ -9,30 +9,55 @@ export class EvolutionMessagingGateway implements MessagingGateway {
   private readonly instance = env.EVOLUTION_INSTANCE;
 
   async sendText(params: {
+    correlationId?: string;
     phone: string;
     message: string;
     whatsappId?: string | number;
   }): Promise<void> {
-    await this.post(`message/sendText/${this.instance}`, {
-      number: params.phone,
-      text: params.message,
+    console.info("[EVOLUTION] send_text", {
+      correlationId: params.correlationId,
+      phone: params.phone,
     });
+
+    await this.post(
+      `message/sendText/${this.instance}`,
+      {
+        number: params.phone,
+        text: params.message,
+      },
+      params.correlationId,
+    );
   }
 
   async sendButtons(params: {
+    correlationId?: string;
     phone: string;
     whatsappId?: string | number;
     payload: ButtonMessage;
   }): Promise<void> {
-    await this.post(`message/sendButtons/${this.instance}`, {
-      number: params.phone,
-      title: params.payload.title,
-      description: params.payload.description,
-      buttons: params.payload.buttons,
+    console.info("[EVOLUTION] send_buttons", {
+      correlationId: params.correlationId,
+      phone: params.phone,
+      buttons: params.payload.buttons.length,
     });
+
+    await this.post(
+      `message/sendButtons/${this.instance}`,
+      {
+        number: params.phone,
+        title: params.payload.title,
+        description: params.payload.description,
+        buttons: params.payload.buttons,
+      },
+      params.correlationId,
+    );
   }
 
-  private async post(path: string, body: unknown): Promise<void> {
+  private async post(
+    path: string,
+    body: unknown,
+    correlationId?: string,
+  ): Promise<void> {
     this.validateConfig();
 
     const response = await fetch(`${this.apiUrl}/${path}`, {
@@ -48,6 +73,7 @@ export class EvolutionMessagingGateway implements MessagingGateway {
 
     if (!response.ok) {
       throw new ExternalApiError("Falha ao chamar Evolution API", {
+        ...(correlationId ? { correlationId } : {}),
         provider: "evolution",
         operation: path,
         status: response.status,
@@ -61,6 +87,7 @@ export class EvolutionMessagingGateway implements MessagingGateway {
       response.status,
       response.statusText,
       path,
+      correlationId,
     );
   }
 
@@ -69,6 +96,7 @@ export class EvolutionMessagingGateway implements MessagingGateway {
     status: number,
     statusText: string,
     operation: string,
+    correlationId?: string,
   ): void {
     if (!responseBody) return;
 
@@ -82,6 +110,7 @@ export class EvolutionMessagingGateway implements MessagingGateway {
 
     if (this.hasErrorResponse(data)) {
       throw new ExternalApiError("Evolution retornou erro na resposta", {
+        ...(correlationId ? { correlationId } : {}),
         provider: "evolution",
         operation,
         status,
