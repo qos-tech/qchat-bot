@@ -3,6 +3,7 @@ import type { TicketTransferGateway } from "../../domain/bot/ticket-transfer-gat
 import type { MessagingGateway } from "../../domain/messaging/messaging-gateway.js";
 import type { NormalizedIncomingMessage } from "../../domain/messaging/normalized-incoming-message.js";
 import type { QueueConfig } from "../config/queue-config.js";
+import { createCorrelationId } from "../logging/correlation-id.js";
 import { afterHoursMenu, financeMenu, mainMenu } from "../menus/index.js";
 import {
   AFTER_HOURS_OTHER_CONFIRMATION_MESSAGE,
@@ -24,7 +25,10 @@ export class HandleIncomingMessageUseCase {
   ) {}
 
   async execute(message: NormalizedIncomingMessage): Promise<void> {
+    const correlationId = createCorrelationId(message);
+
     console.info("[BOT] message_received", {
+      correlationId,
       ticketId: message.ticketId,
       phone: message.phone,
       kind: message.kind,
@@ -36,6 +40,7 @@ export class HandleIncomingMessageUseCase {
 
     if (message.fromMe) {
       console.info("[BOT] message_ignored", {
+        correlationId,
         reason: "from_me",
         ticketId: message.ticketId,
       });
@@ -47,6 +52,7 @@ export class HandleIncomingMessageUseCase {
       await this.sessions.deleteByTicketId(String(message.ticketId));
 
       console.info("[BOT] session_deleted", {
+        correlationId,
         reason: "ticket_closed",
         ticketId: message.ticketId,
       });
@@ -56,6 +62,7 @@ export class HandleIncomingMessageUseCase {
 
     if (message.userId !== null && message.userId !== undefined) {
       console.info("[BOT] message_ignored", {
+        correlationId,
         reason: "already_assigned",
         ticketId: message.ticketId,
         userId: message.userId,
@@ -66,6 +73,7 @@ export class HandleIncomingMessageUseCase {
 
     if (String(message.queueId) !== this.queues.triageQueueId) {
       console.info("[BOT] message_ignored", {
+        correlationId,
         reason: "not_triage_queue",
         ticketId: message.ticketId,
         queueId: message.queueId,
@@ -78,6 +86,7 @@ export class HandleIncomingMessageUseCase {
     let session = await this.sessions.findByTicketId(String(message.ticketId));
 
     console.info("[BOT] session_checked", {
+      correlationId,
       ticketId: message.ticketId,
       exists: Boolean(session),
       stage: session?.stage,
@@ -88,6 +97,7 @@ export class HandleIncomingMessageUseCase {
       await this.sessions.deleteByTicketId(String(message.ticketId));
 
       console.info("[BOT] session_deleted", {
+        correlationId,
         reason: "stale_waiting_human_session",
         ticketId: message.ticketId,
         queueId: message.queueId,
@@ -102,6 +112,7 @@ export class HandleIncomingMessageUseCase {
     );
 
     console.info("[BOT] business_hours_checked", {
+      correlationId,
       ticketId: message.ticketId,
       isOpen: businessHours.isOpen,
       reason: businessHours.reason,
@@ -115,6 +126,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       console.info("[BOT] menu_sent", {
+        correlationId,
         ticketId: message.ticketId,
         menu: "main",
       });
@@ -132,6 +144,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       console.info("[BOT] session_saved", {
+        correlationId,
         ticketId: message.ticketId,
         stage: "awaiting_main_menu",
       });
@@ -151,6 +164,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       console.info("[BOT] menu_sent", {
+        correlationId,
         ticketId: message.ticketId,
         menu: "main",
         reason: "loop",
@@ -167,6 +181,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       console.info("[BOT] menu_sent", {
+        correlationId,
         ticketId: message.ticketId,
         menu: "after_hours",
       });
@@ -184,6 +199,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       console.info("[BOT] session_saved", {
+        correlationId,
         ticketId: message.ticketId,
         stage: "awaiting_main_menu",
         mode: "after_hours",
@@ -204,6 +220,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       console.info("[BOT] menu_sent", {
+        correlationId,
         ticketId: message.ticketId,
         menu: "after_hours",
         reason: "loop",
@@ -221,6 +238,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       console.info("[BOT] ticket_transferred", {
+        correlationId,
         ticketId: message.ticketId,
         queueId: this.queues.supportQueueId,
         intent: "support",
@@ -241,6 +259,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       console.info("[BOT] session_saved", {
+        correlationId,
         ticketId: message.ticketId,
         stage: "waiting_human",
         intent: "support",
@@ -259,6 +278,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       console.info("[BOT] ticket_transferred", {
+        correlationId,
         ticketId: message.ticketId,
         queueId: this.queues.otherQueueId,
         intent: "other",
@@ -279,6 +299,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       console.info("[BOT] session_saved", {
+        correlationId,
         ticketId: message.ticketId,
         stage: "waiting_human",
         intent: "other",
@@ -297,6 +318,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       console.info("[BOT] ticket_transferred", {
+        correlationId,
         ticketId: message.ticketId,
         queueId: this.queues.supportQueueId,
         intent: "support",
@@ -316,6 +338,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       console.info("[BOT] session_saved", {
+        correlationId,
         ticketId: message.ticketId,
         stage: "waiting_human",
         intent: "support",
@@ -333,6 +356,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       console.info("[BOT] ticket_transferred", {
+        correlationId,
         ticketId: message.ticketId,
         queueId: this.queues.otherQueueId,
         intent: "other",
@@ -352,6 +376,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       console.info("[BOT] session_saved", {
+        correlationId,
         ticketId: message.ticketId,
         stage: "waiting_human",
         intent: "other",
@@ -368,6 +393,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       console.info("[BOT] menu_sent", {
+        correlationId,
         ticketId: message.ticketId,
         menu: "finance",
       });
@@ -386,6 +412,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       console.info("[BOT] session_saved", {
+        correlationId,
         ticketId: message.ticketId,
         stage: "awaiting_finance_menu",
         intent: "finance",
@@ -406,6 +433,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       console.info("[BOT] menu_sent", {
+        correlationId,
         ticketId: message.ticketId,
         menu: "finance",
         reason: "loop",
@@ -436,6 +464,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       console.info("[BOT] ticket_transferred", {
+        correlationId,
         ticketId: message.ticketId,
         queueId: this.queues.financeQueueId,
         intent,
@@ -455,6 +484,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       console.info("[BOT] session_saved", {
+        correlationId,
         ticketId: message.ticketId,
         stage: "waiting_human",
         intent,
@@ -464,6 +494,7 @@ export class HandleIncomingMessageUseCase {
     }
 
     console.info("[BOT] message_unhandled", {
+      correlationId,
       ticketId: message.ticketId,
       stage: session?.stage,
       buttonId: message.buttonId,
