@@ -1,355 +1,270 @@
 # QChat Bot
 
-Bot de triagem para integração com QChat, desenvolvido em Node.js + TypeScript seguindo princípios de Clean Architecture.
+Bot de triagem para atendimento via WhatsApp integrado ao QChat e Evolution API.
 
-## Objetivos
+## Funcionalidades
 
-- Automatizar o primeiro atendimento ao cliente.
-- Direcionar solicitações para as filas corretas.
-- Respeitar horário comercial.
-- Permitir expansão futura para Evolution, API Oficial e outros provedores.
-- Manter a regra de negócio desacoplada do provedor de mensagens.
+- Menu principal de atendimento
+- Menu financeiro
+- Atendimento fora do horário comercial
+- Transferência automática para filas do QChat
+- Persistência de sessões em PostgreSQL
+- Limpeza automática de sessões expiradas
+- Retry automático para integrações externas
+- Observabilidade com Correlation ID
+- Tratamento centralizado de erros
 
 ---
 
-# Fluxo Geral
+## Arquitetura
 
 ```text
-Mensagem recebida
-        │
-        ▼
-QChatPayloadNormalizer
-        │
-        ▼
+QChat Webhook
+      │
+      ▼
+Payload Normalizer
+      │
+      ▼
 HandleIncomingMessageUseCase
-        │
-        ▼
-fromMe?
-├─ Sim → Ignora
-└─ Não
+      │
+ ┌────┴────┐
+ ▼         ▼
+Postgres   Evolution API
+             │
+             ▼
+          WhatsApp
 
-        ▼
-userId preenchido?
-├─ Sim → Ignora
-└─ Não
-
-        ▼
-queueId == TRIAGE_QUEUE_ID?
-├─ Não → Ignora
-└─ Sim
-
-        ▼
-BusinessHoursService
-
-        ▼
-Horário comercial?
-├─ Não → Fluxo fora do horário
-└─ Sim → Fluxo normal
+      │
+      ▼
+QChat API
+(Filas e Transferências)
 ```
 
 ---
 
-# Fluxo Normal
+## Tecnologias
 
-## Primeiro contato
-
-```text
-Cliente envia qualquer mensagem
-↓
-Cria sessão
-↓
-Envia menu principal
-```
-
-### Menu Principal
-
-- Suporte Técnico
-- Financeiro
-- Outros Assuntos
+- Node.js 22
+- TypeScript
+- Fastify
+- PostgreSQL
+- node-pg-migrate
+- Docker
+- Evolution API
+- QChat
 
 ---
 
-## Suporte Técnico
+## Variáveis de Ambiente
 
-```text
-Cliente seleciona Suporte Técnico
-↓
-Sessão → waiting_human
-↓
-Move ticket para fila de suporte
-↓
-Envia mensagem de confirmação
-```
+```env
+PORT=3000
 
----
+DATABASE_URL=
 
-## Financeiro
+QCHAT_API_URL=
+QCHAT_API_TOKEN=
 
-```text
-Cliente seleciona Financeiro
-↓
-Sessão → awaiting_finance_menu
-↓
-Envia submenu financeiro
-```
+EVOLUTION_API_URL=
+EVOLUTION_API_KEY=
+EVOLUTION_INSTANCE=
 
-### Submenu Financeiro
+QCHAT_QUEUE_TRIAGE_ID=
+QCHAT_QUEUE_SUPPORT_ID=
+QCHAT_QUEUE_FINANCE_ID=
+QCHAT_QUEUE_OTHER_ID=
 
-- 2ª Via NF
-- 2ª Via Boleto
-- Outros
+SESSION_RETENTION_DAYS=7
 
-### 2ª Via NF
-
-```text
-Cliente seleciona opção
-↓
-Sessão → waiting_human
-↓
-Move ticket para fila financeira
-↓
-Envia confirmação
-```
-
-### 2ª Via Boleto
-
-```text
-Cliente seleciona opção
-↓
-Sessão → waiting_human
-↓
-Move ticket para fila financeira
-↓
-Envia confirmação
-```
-
-### Outros Assuntos Financeiros
-
-```text
-Cliente seleciona opção
-↓
-Sessão → waiting_human
-↓
-Move ticket para fila financeira
-↓
-Envia confirmação
+EXTERNAL_API_RETRY_ATTEMPTS=3
+EXTERNAL_API_RETRY_BASE_DELAY_MS=500
 ```
 
 ---
 
-## Outros Assuntos
+## Desenvolvimento
 
-```text
-Cliente seleciona Outros Assuntos
-↓
-Sessão → waiting_human
-↓
-Move ticket para fila correspondente
-↓
-Envia confirmação
+Instalação:
+
+```bash
+npm install
+```
+
+Executar migrations:
+
+```bash
+npm run migrate:up
+```
+
+Executar em modo desenvolvimento:
+
+```bash
+npm run dev
 ```
 
 ---
 
-# Loop de Menus
+## Build
 
-Enquanto o cliente não selecionar uma opção válida:
+Gerar artefatos:
 
-## Menu Principal
-
-```text
-Texto
-Áudio
-Imagem
-Vídeo
-Documento
-Sticker
-Localização
-Contato
-
-↓
-
-Reenvia menu principal
+```bash
+npm run build
 ```
 
-## Menu Financeiro
+Executar versão compilada:
 
-```text
-Texto
-Áudio
-Imagem
-Vídeo
-Documento
-Sticker
-Localização
-Contato
-
-↓
-
-Reenvia submenu financeiro
+```bash
+npm run start
 ```
 
 ---
 
-# Fluxo Fora do Horário
+## Docker
 
-## Horário de Atendimento
+Subir ambiente:
 
-Segunda a Sexta:
-
-- 08:30 às 12:00
-- 13:00 às 17:30
-
-Fechado:
-
-- Sábados
-- Domingos
-- Feriados nacionais
-
----
-
-## Comportamento
-
-```text
-Cliente envia mensagem
-↓
-Envia menu fora do horário
+```bash
+docker compose up -d
 ```
 
-### Menu Fora do Horário
+Executar migrations:
 
-- Suporte Técnico
-- Financeiro
-- Outros Assuntos
+```bash
+docker compose exec qchat-bot npm run migrate:up
+```
 
----
+Ver logs:
 
-## Seleção de opção
-
-```text
-Cliente escolhe opção
-↓
-Registra intenção
-↓
-Move ticket para fila correspondente
-↓
-Sessão → waiting_human
-↓
-Mensagem:
-"Sua solicitação foi registrada.
-Nossa equipe retornará no próximo horário útil."
+```bash
+docker compose logs -f qchat-bot
 ```
 
 ---
 
-# Sessões
+## Health Check
 
-As sessões são controladas por:
-
-```text
-ticketId
+```bash
+curl http://localhost:3000/health
 ```
 
-Cada ticket representa uma conversa independente.
+Resposta esperada:
 
-Novos tickets ou reaberturas iniciam um novo fluxo de atendimento.
-
----
-
-# Estados da Conversa
-
-```text
-awaiting_main_menu
-awaiting_finance_menu
-waiting_human
+```json
+{
+  "status": "ok"
+}
 ```
 
 ---
 
-# Tipos de Mensagem Suportados
+## Fluxos Implementados
+
+### Horário Comercial
+
+1. Suporte
+2. Financeiro
+3. Outros
+
+### Fora do Horário
+
+1. Suporte
+2. Outros
+
+---
+
+## Observabilidade
+
+Todos os atendimentos recebem um Correlation ID único.
+
+Exemplo:
 
 ```text
-text
-button
-image
-audio
-video
-document
-sticker
-location
-contact
-reaction
-unknown
+qchat:15551:3EB05FFF052291E3EB4C88
+```
+
+Esse identificador é propagado entre:
+
+- Webhook
+- Use Cases
+- Evolution API
+- QChat API
+- Logs
+- Tratamento de erros
+
+---
+
+## Limpeza de Sessões
+
+Execução manual:
+
+```bash
+docker compose exec -T qchat-bot npm run cleanup:sessions
+```
+
+Exemplo:
+
+```text
+[CLEANUP] 15 sessões removidas (retenção: 7 dias)
+```
+
+Cron recomendado:
+
+```cron
+0 2 * * * cd /opt/docker/qchat-bot && docker compose exec -T qchat-bot npm run cleanup:sessions >> /var/log/qchat-bot-cleanup.log 2>&1
 ```
 
 ---
 
-# Arquitetura
-
-```text
-Webhook
-↓
-QChatPayloadNormalizer
-↓
-HandleIncomingMessageUseCase
-↓
-BusinessHoursService
-↓
-ConversationSessionRepository
-↓
-MessagingGateway
-↓
-TicketRoutingGateway
-```
-
----
-
-# Decisões Arquiteturais
-
-- Sessões são controladas por `ticketId`.
-- Todo primeiro atendimento deve chegar na fila de Triagem.
-- O bot processa apenas tickets da fila de Triagem.
-- `userId` preenchido significa atendimento humano.
-- O bot ignora mensagens enviadas por ele próprio (`fromMe = true`).
-- Fora do horário o cliente continua sendo direcionado para a fila final escolhida.
-- O bot é agnóstico ao provedor de mensagens.
-- Toda integração externa deve ocorrer através de Gateways.
-- A regra de negócio não deve conhecer detalhes da API do QChat.
-
----
-
-# Estrutura do Projeto
+## Estrutura do Projeto
 
 ```text
 src/
 ├── application/
-│   ├── services/
-│   ├── use-cases/
-│   └── menus/
-│
+├── config/
 ├── domain/
-│   ├── bot/
-│   └── messaging/
-│
 ├── infrastructure/
-│   ├── database/
-│   ├── providers/
-│   ├── repositories/
-│   └── services/
-│
-└── presentation/
-    └── http/
+├── presentation/
+├── scripts/
+└── shared/
 ```
 
 ---
 
-# Objetivos Futuros
+## Roadmap
 
-- Um ticket por conversa.
-- Integração com Evolution API.
-- Integração com WhatsApp Cloud API.
-- Configuração de horários por empresa.
-- Configuração dinâmica de menus.
-- Integração com ERP para consultas financeiras.
-- Integração com GLPI para abertura e consulta de chamados.
-- Base de conhecimento com IA.
+### v1.1.0
+
+- Integração GLPI
+- Abertura automática de chamados
+- Consulta de chamados
+- Atualização de chamados
+
+### v1.2.0
+
+- Base de conhecimento
+- RAG
+- Respostas assistidas por IA
+
+### v1.3.0
+
+- Multiempresa
+- Menus por empresa
+- Horários por empresa
+- Filas por empresa
+
+---
+
+## Status
+
+### Versão Atual
+
+**v1.0.0**
+
+### Estado
+
+✅ Produção
+
+### MVP
+
+Concluído e validado em ambiente real.
