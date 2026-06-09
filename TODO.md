@@ -48,8 +48,9 @@
 ## Manutenção
 
 - [x] Cleanup de sessões
-- [x] Índice em `bot_sessions.updated_at`
+- [x] Índice em bot_sessions.updated_at
 - [x] Retenção configurável por ENV
+- [x] Agendamento via cron
 
 ## Deploy
 
@@ -59,17 +60,16 @@
 - [x] PostgreSQL externo
 - [x] Migrations no container
 - [x] Teste em servidor
+- [x] Domínio público
+- [x] SSL
+- [x] Webhook definitivo configurado
 
 ---
 
 # Produção
 
-- [ ] Agendar `cleanup:sessions` via cron
-- [ ] Configurar domínio público
-- [ ] Configurar SSL
-- [ ] Apontar webhook definitivo do QChat
-- [ ] Revisar backup do banco
-- [ ] Revisar constraints do banco
+- [ ] Revisar estratégia de backup PostgreSQL
+- [ ] Avaliar índices após crescimento real
 
 ---
 
@@ -77,13 +77,22 @@
 
 ## Integração GLPI
 
+### Fase 1
+
 - [ ] Validar usuário por telefone
 - [ ] Buscar usuário no GLPI
 - [ ] Abrir chamado
 - [ ] Retornar número do chamado
+
+### Fase 2
+
 - [ ] Consultar chamado
 - [ ] Adicionar acompanhamento
 - [ ] Encerrar chamado
+
+### Fase 3
+
+- [ ] Integração completa Bot ↔ GLPI
 
 ---
 
@@ -101,3 +110,30 @@
 - [ ] Menus por empresa
 - [ ] Horários por empresa
 - [ ] Mensagens por empresa
+
+---
+
+# Status Atual
+
+## MVP
+
+✅ Concluído
+
+### Funcionalidades operacionais
+
+- Recebimento de mensagens do QChat
+- Criação e controle de sessões
+- Menus interativos via Evolution
+- Transferência automática para filas
+- Fluxo financeiro
+- Fluxo fora do horário
+- Recuperação de tickets reutilizados
+- Tratamento de erros
+- Retry automático
+- Observabilidade completa
+- Deploy em produção
+- Limpeza automática de sessões
+
+### Próxima entrega de valor
+
+➡️ Integração com GLPI para abertura automática de chamados
