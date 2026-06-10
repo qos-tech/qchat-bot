@@ -21,7 +21,8 @@
     "test:bootstrap": "tsx tests/manual/test-bootstrap.ts",
     "test:bot-config": "tsx tests/manual/test-bot-config-repository.ts",
     "test:bot-config-resolver": "tsx tests/manual/test-bot-config-resolver.ts",
-    "test:bot-context": "tsx tests/manual/test-bot-context.ts"
+    "test:bot-context": "tsx tests/manual/test-bot-context.ts",
+    "test:menu-resolver": "tsx tests/manual/test-menu-resolver.ts"
   },
   "keywords": [],
   "author": "",
