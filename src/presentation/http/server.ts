@@ -2,10 +2,10 @@ import Fastify from "fastify";
 import { QChatPayloadNormalizer } from "../../infrastructure/providers/qchat/qchat-payload-normalizer.js";
 import { createHandleIncomingMessageUseCase } from "../../bootstrap/create-handle-incoming-message-use-case.js";
 import { env } from "../../config/env.js";
-import { ExternalApiError } from "../../domain/errors/external-api-error.js";
 
 import { DefaultBotConfigResolver } from "../../application/services/default-bot-config-resolver.js";
 import { PostgresBotConfigRepository } from "../../infrastructure/repositories/postgres-bot-config-repository.js";
+import { handleWebhookError } from "./handle-webhook-error.js";
 
 const app = Fastify({
   logger: true,
@@ -51,34 +51,7 @@ app.post("/webhook/qchat", async (request, reply) => {
       status: "ok",
     });
   } catch (error) {
-    if (error instanceof ExternalApiError) {
-      request.log.error({
-        event: "external_api_error",
-        route: "/webhook/qchat",
-        provider: error.context.provider,
-        operation: error.context.operation,
-        status: error.context.status,
-        statusText: error.context.statusText,
-        responseBody: error.context.responseBody,
-      });
-
-      return reply.status(502).send({
-        status: "error",
-        message: "Falha ao comunicar com serviço externo",
-        provider: error.context.provider,
-      });
-    }
-
-    request.log.error({
-      event: "webhook_error",
-      route: "/webhook/qchat",
-      error,
-    });
-
-    return reply.status(500).send({
-      status: "error",
-      message: "Erro ao processar webhook",
-    });
+    return handleWebhookError(error, request, reply, "/webhook/qchat");
   }
 });
 
@@ -138,34 +111,12 @@ app.post("/webhook/qchat/:webhookToken", async (request, reply) => {
       bot: botConfig.name,
     });
   } catch (error) {
-    if (error instanceof ExternalApiError) {
-      request.log.error({
-        event: "external_api_error",
-        route: "/webhook/qchat/:webhookToken",
-        provider: error.context.provider,
-        operation: error.context.operation,
-        status: error.context.status,
-        statusText: error.context.statusText,
-        responseBody: error.context.responseBody,
-      });
-
-      return reply.status(502).send({
-        status: "error",
-        message: "Falha ao comunicar com serviço externo",
-        provider: error.context.provider,
-      });
-    }
-
-    request.log.error({
-      event: "webhook_error",
-      route: "/webhook/qchat/:webhookToken",
+    return handleWebhookError(
       error,
-    });
-
-    return reply.status(500).send({
-      status: "error",
-      message: "Erro ao processar webhook",
-    });
+      request,
+      reply,
+      "/webhook/qchat/:webhookToken",
+    );
   }
 });
 
