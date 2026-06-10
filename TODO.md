@@ -1,139 +1,188 @@
 # TODO - QChat Bot
 
-## Core
-
-- [x] Normalizador QChat
-- [x] Repositório PostgreSQL
-- [x] Business Hours Service
-- [x] Bootstrap da aplicação
-
-## Fluxos
-
-- [x] Menu principal
-- [x] Menu financeiro
-- [x] Menu fora do horário
-
-## Integrações
-
-- [x] Evolution Messaging Gateway
-- [x] QChat Ticket Transfer Gateway
-- [x] Retry em APIs externas
-
-## HTTP / Webhook
-
-- [x] Servidor Fastify
-- [x] Health Check
-- [x] Webhook QChat
-- [x] Payload real do QChat
-- [x] Payload encapsulado
-- [x] Tratamento de erros
-
-## Observabilidade
-
-- [x] Logs estruturados
-- [x] Correlation ID no UseCase
-- [x] Correlation ID nos gateways
-- [x] Correlation ID nos erros externos
-- [x] Rastreabilidade ponta a ponta
-
-## Resiliência
-
-- [x] ExternalApiError
-- [x] Diferenciar erro interno 500 e erro externo 502
-- [x] Retry em falhas de rede
-- [x] Retry em HTTP 408/429/5xx
-- [x] Não repetir erro 4xx definitivo
-- [x] Retentativas configuráveis por ENV
-
-## Manutenção
-
-- [x] Cleanup de sessões
-- [x] Índice em bot_sessions.updated_at
-- [x] Retenção configurável por ENV
-- [x] Agendamento via cron
-
-## Deploy
-
-- [x] Dockerfile
-- [x] .dockerignore
-- [x] docker-compose
-- [x] PostgreSQL externo
-- [x] Migrations no container
-- [x] Teste em servidor
-- [x] Domínio público
-- [x] SSL
-- [x] Webhook definitivo configurado
-
----
-
-# Produção
+## Produção
 
 - [ ] Revisar estratégia de backup PostgreSQL
 - [ ] Avaliar índices após crescimento real
 
 ---
 
-# Próximo Marco
+# v1.1 - Multiempresa / Multibot
 
-## Integração GLPI
+## v1.1.0 - Webhook Dinâmico e Configuração de Bots
 
-### Fase 1
+### Objetivo
 
-- [ ] Validar usuário por telefone
-- [ ] Buscar usuário no GLPI
-- [ ] Abrir chamado
-- [ ] Retornar número do chamado
+Desacoplar o sistema de uma única empresa e permitir múltiplos bots independentes.
 
-### Fase 2
+### Entregas
 
-- [ ] Consultar chamado
-- [ ] Adicionar acompanhamento
-- [ ] Encerrar chamado
-
-### Fase 3
-
-- [ ] Integração completa Bot ↔ GLPI
+- [ ] Criar tabela `bot_configs`
+- [ ] Criar `webhook_token` por bot
+- [ ] Criar rota `/webhook/qchat/:webhookToken`
+- [ ] Resolver configuração do bot pelo webhook
+- [ ] Validar bot ativo/inativo
+- [ ] Fallback para webhook inválido
+- [ ] Remover dependência de configuração única por ENV
 
 ---
 
-# Futuro
+## v1.1.1 - Configuração Dinâmica
 
-## IA
+### Objetivo
 
-- [ ] Base de conhecimento
+Permitir que cada bot possua suas próprias regras.
+
+### Entregas
+
+- [ ] Filas por bot
+- [ ] Horários por bot
+- [ ] Mensagens por bot
+- [ ] Retenção por bot
+- [ ] Configuração centralizada em banco
+
+---
+
+## v1.1.2 - Multi Instância
+
+### Objetivo
+
+Permitir integrações independentes por bot.
+
+### Entregas
+
+- [ ] Evolution URL por bot
+- [ ] Evolution API Key por bot
+- [ ] Evolution Instance por bot
+- [ ] QChat URL por bot
+- [ ] QChat Token por bot
+
+---
+
+## v1.1.3 - Menus Configuráveis
+
+### Objetivo
+
+Remover menus hardcoded.
+
+### Entregas
+
+- [ ] Menu principal configurável
+- [ ] Menu financeiro configurável
+- [ ] Menu fora do horário configurável
+- [ ] Botões configuráveis
+- [ ] Textos configuráveis
+- [ ] Ordem configurável
+
+---
+
+## v1.1.4 - Fluxos Configuráveis
+
+### Objetivo
+
+Permitir diferentes comportamentos por cliente.
+
+### Entregas
+
+- [ ] Transferências configuráveis
+- [ ] Submenus configuráveis
+- [ ] Intents configuráveis
+- [ ] Mensagens configuráveis
+- [ ] Regras por opção
+
+---
+
+## v1.1.5 - Administração
+
+### Objetivo
+
+Facilitar manutenção e implantação.
+
+### Entregas
+
+- [ ] Seeds iniciais
+- [ ] Exportação de configuração
+- [ ] Importação de configuração
+- [ ] Documentação
+- [ ] Templates de configuração
+
+---
+
+## v1.1.6 - Estabilização
+
+### Objetivo
+
+Preparar a plataforma para integrações futuras.
+
+### Entregas
+
+- [ ] Testes finais
+- [ ] Refatorações
+- [ ] Revisão de migrations
+- [ ] Revisão de performance
+- [ ] Release v1.1
+
+---
+
+# Roadmap Futuro
+
+## v1.2 - GLPI
+
+- [ ] Validar usuário por telefone
+- [ ] Buscar usuário
+- [ ] Abrir chamado
+- [ ] Consultar chamado
+- [ ] Atualizar chamado
+- [ ] Encerrar chamado
+
+## v1.3 - Base de Conhecimento
+
+- [ ] Base documental
+- [ ] Busca semântica
 - [ ] RAG
+- [ ] Respostas assistidas
+
+## v1.4 - IA
+
 - [ ] Classificação automática
-
-## Multiempresa
-
-- [ ] Filas por empresa
-- [ ] Menus por empresa
-- [ ] Horários por empresa
-- [ ] Mensagens por empresa
+- [ ] Sugestões automáticas
+- [ ] Ações automáticas
+- [ ] Agentes especializados
 
 ---
 
 # Status Atual
 
+## Versão
+
+✅ v1.0.0
+
+## Estado
+
+✅ Produção
+
 ## MVP
 
-✅ Concluído
+Concluído e validado em ambiente real.
 
-### Funcionalidades operacionais
+### Entregas da v1.0.0
 
-- Recebimento de mensagens do QChat
-- Criação e controle de sessões
-- Menus interativos via Evolution
-- Transferência automática para filas
-- Fluxo financeiro
-- Fluxo fora do horário
-- Recuperação de tickets reutilizados
-- Tratamento de erros
-- Retry automático
-- Observabilidade completa
-- Deploy em produção
-- Limpeza automática de sessões
+- Webhook QChat
+- Evolution API
+- PostgreSQL
+- Menus
+- Horário comercial
+- Fora do horário
+- Transferência automática
+- Sessões
+- Retry
+- Correlation ID
+- Observabilidade
+- Docker
+- SSL
+- Produção
+- Cleanup automático
 
-### Próxima entrega de valor
+### Próxima Versão
 
-➡️ Integração com GLPI para abertura automática de chamados
+➡️ v1.1 - Multiempresa / Multibot
