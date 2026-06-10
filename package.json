@@ -18,7 +18,8 @@
     "test:use-case": "tsx tests/manual/test-handle-incoming-message.ts",
     "test:evolution": "tsx tests/manual/test-evolution-gateway.ts",
     "test:qchat-transfer": "tsx tests/manual/test-qchat-transfer-gateway.ts",
-    "test:bootstrap": "tsx tests/manual/test-bootstrap.ts"
+    "test:bootstrap": "tsx tests/manual/test-bootstrap.ts",
+    "test:bot-config": "tsx tests/manual/test-bot-config-repository.ts"
   },
   "keywords": [],
   "author": "",
