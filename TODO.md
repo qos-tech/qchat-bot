@@ -11,110 +11,84 @@
 
 ## v1.1.0 - Webhook Dinâmico e Configuração de Bots
 
-### Objetivo
+### Concluído
 
-Desacoplar o sistema de uma única empresa e permitir múltiplos bots independentes.
+- [x] Criar branch `release/v1.1`
+- [x] Criar tabela `bot_configs`
+- [x] Criar `webhook_token` por bot
+- [x] Criar campos JSONB de configuração
+- [x] Criar `BotConfig`
+- [x] Criar `BotConfigRepository`
+- [x] Criar `PostgresBotConfigRepository`
+- [x] Criar seed inicial da QoS
+- [x] Criar `BotConfigResolver`
+- [x] Resolver configuração por `webhookToken`
+- [x] Resolver configuração por `companyId` + `whatsappId`
+- [x] Criar rota `/webhook/qchat/:webhookToken`
+- [x] Validar webhook dinâmico com `qos-prod`
 
-### Entregas
+### Pendente
 
-- [ ] Criar tabela `bot_configs`
-- [ ] Criar `webhook_token` por bot
-- [ ] Criar rota `/webhook/qchat/:webhookToken`
-- [ ] Resolver configuração do bot pelo webhook
-- [ ] Validar bot ativo/inativo
-- [ ] Fallback para webhook inválido
-- [ ] Remover dependência de configuração única por ENV
+- [ ] Fazer rota dinâmica usar `BotContext` no UseCase
+- [ ] Remover dependência de `QueueConfig` fixo na rota dinâmica
+- [ ] Manter rota antiga compatível durante transição
 
 ---
 
-## v1.1.1 - Configuração Dinâmica
+## v1.1.1 - Menus e Fluxos Configuráveis
 
-### Objetivo
+### Concluído
 
-Permitir que cada bot possua suas próprias regras.
+- [x] Redesenhar `BotContext` genérico
+- [x] Criar tipos `BotMenu`, `BotMenuButton` e `BotMenuAction`
+- [x] Criar `BotContextMapper`
+- [x] Criar configuração dinâmica inicial de menus
+- [x] Criar configuração dinâmica inicial de mensagens
+- [x] Criar `MenuResolver`
+- [x] Criar `MenuToButtonMessage`
+- [x] Validar menu dinâmico com teste manual
 
-### Entregas
+### Pendente
 
-- [ ] Filas por bot
-- [ ] Horários por bot
-- [ ] Mensagens por bot
-- [ ] Retenção por bot
-- [ ] Configuração centralizada em banco
+- [ ] Alterar `HandleIncomingMessageUseCase` para aceitar `BotContext`
+- [ ] Enviar menu principal a partir de `menus_config`
+- [ ] Enviar menu fora de horário a partir de `menus_config`
+- [ ] Enviar submenu a partir de ação `send_menu`
+- [ ] Transferir fila a partir de ação `transfer`
+- [ ] Buscar mensagem de confirmação por `messageKey`
+- [ ] Remover regras hardcoded de `option_support`
+- [ ] Remover regras hardcoded de `option_finance`
+- [ ] Remover regras hardcoded de `option_others`
+- [ ] Remover regras hardcoded de `finance_nf`
+- [ ] Remover regras hardcoded de `finance_invoice`
+- [ ] Remover regras hardcoded de `finance_others`
 
 ---
 
 ## v1.1.2 - Multi Instância
-
-### Objetivo
-
-Permitir integrações independentes por bot.
-
-### Entregas
 
 - [ ] Evolution URL por bot
 - [ ] Evolution API Key por bot
 - [ ] Evolution Instance por bot
 - [ ] QChat URL por bot
 - [ ] QChat Token por bot
+- [ ] Gateways dinâmicos por `BotContext`
+- [ ] Remover dependência fixa de ENV para Evolution
+- [ ] Remover dependência fixa de ENV para QChat
 
 ---
 
-## v1.1.3 - Menus Configuráveis
+## v1.1.3 - Administração
 
-### Objetivo
-
-Remover menus hardcoded.
-
-### Entregas
-
-- [ ] Menu principal configurável
-- [ ] Menu financeiro configurável
-- [ ] Menu fora do horário configurável
-- [ ] Botões configuráveis
-- [ ] Textos configuráveis
-- [ ] Ordem configurável
-
----
-
-## v1.1.4 - Fluxos Configuráveis
-
-### Objetivo
-
-Permitir diferentes comportamentos por cliente.
-
-### Entregas
-
-- [ ] Transferências configuráveis
-- [ ] Submenus configuráveis
-- [ ] Intents configuráveis
-- [ ] Mensagens configuráveis
-- [ ] Regras por opção
-
----
-
-## v1.1.5 - Administração
-
-### Objetivo
-
-Facilitar manutenção e implantação.
-
-### Entregas
-
-- [ ] Seeds iniciais
+- [ ] Seeds por ambiente
 - [ ] Exportação de configuração
 - [ ] Importação de configuração
-- [ ] Documentação
 - [ ] Templates de configuração
+- [ ] Documentação de configuração de novo bot
 
 ---
 
-## v1.1.6 - Estabilização
-
-### Objetivo
-
-Preparar a plataforma para integrações futuras.
-
-### Entregas
+## v1.1.4 - Estabilização
 
 - [ ] Testes finais
 - [ ] Refatorações
@@ -153,36 +127,14 @@ Preparar a plataforma para integrações futuras.
 
 # Status Atual
 
-## Versão
+## Versão estável
 
 ✅ v1.0.0
 
-## Estado
+## Branch atual
 
-✅ Produção
+`release/v1.1`
 
-## MVP
+## Objetivo atual
 
-Concluído e validado em ambiente real.
-
-### Entregas da v1.0.0
-
-- Webhook QChat
-- Evolution API
-- PostgreSQL
-- Menus
-- Horário comercial
-- Fora do horário
-- Transferência automática
-- Sessões
-- Retry
-- Correlation ID
-- Observabilidade
-- Docker
-- SSL
-- Produção
-- Cleanup automático
-
-### Próxima Versão
-
-➡️ v1.1 - Multiempresa / Multibot
+Transformar o bot único da QoS em uma base multiempresa/multibot configurável.
