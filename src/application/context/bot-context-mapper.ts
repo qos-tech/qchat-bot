@@ -7,12 +7,11 @@ export class BotContextMapper {
       botId: config.id,
       botName: config.name,
 
-      queues: {
-        triageQueueId: config.queues.triageQueueId,
-        supportQueueId: config.queues.supportQueueId,
-        financeQueueId: config.queues.financeQueueId,
-        otherQueueId: config.queues.otherQueueId,
-      },
+      triageQueueId: config.queues.triageQueueId,
+
+      menus: config.menus as BotContext["menus"],
+
+      messages: config.messages as BotContext["messages"],
     };
   }
 }
