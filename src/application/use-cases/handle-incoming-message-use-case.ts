@@ -1,6 +1,5 @@
 import type { ConversationSessionRepository } from "../../domain/bot/conversation-session-repository.js";
 import type { Intent } from "../../domain/bot/intent.js";
-import type { Stage } from "../../domain/bot/stage.js";
 import type { TicketTransferGateway } from "../../domain/bot/ticket-transfer-gateway.js";
 import type { ButtonMessage } from "../../domain/messaging/button-message.js";
 import type { MessagingGateway } from "../../domain/messaging/messaging-gateway.js";
@@ -242,17 +241,30 @@ export class HandleIncomingMessageUseCase {
       return;
     }
 
-    if (context && message.buttonId) {
-      const didExecuteAction = await this.executeContextButtonAction(
-        context,
-        message,
-        correlationId,
-        this.resolveActiveMenuId(session?.stage, businessHours.isOpen),
-      );
+    if (context) {
+      if (message.isButtonReply) {
+        await this.executeContextButtonAction(
+          context,
+          message,
+          correlationId,
+          session?.stage,
+          businessHours.isOpen,
+          businessHours.reason,
+        );
 
-      if (didExecuteAction) {
         return;
       }
+
+      console.info("[BOT] message_unhandled", {
+        correlationId,
+        ticketId: message.ticketId,
+        stage: session?.stage,
+        buttonId: message.buttonId,
+        isOpen: businessHours.isOpen,
+        reason: businessHours.reason,
+      });
+
+      return;
     }
 
     if (message.buttonId === "option_support" && !businessHours.isOpen) {
@@ -578,47 +590,27 @@ export class HandleIncomingMessageUseCase {
     return MenuToButtonMessage.convert(menu);
   }
 
-  private resolveActiveMenuId(
-    stage: Stage | undefined,
-    isBusinessHoursOpen: boolean,
-  ): string {
-    if (!isBusinessHoursOpen) {
-      return "after_hours";
-    }
-
-    if (stage === "awaiting_finance_menu") {
-      return "finance";
-    }
-
-    return "main";
-  }
-
   private async executeContextButtonAction(
     context: BotContext,
     message: NormalizedIncomingMessage,
     correlationId: string,
-    activeMenuId: string,
-  ): Promise<boolean> {
-    const activeMenu = MenuResolver.getMenu(context, activeMenuId);
-
-    if (!activeMenu) {
-      throw new Error(`Menu "${activeMenuId}" não encontrado no BotContext`);
-    }
-
-    const activeContext: BotContext = {
-      ...context,
-      menus: {
-        [activeMenuId]: activeMenu,
-      },
-    };
-
-    const button = MenuResolver.findButton(
-      activeContext,
-      message.buttonId ?? "",
-    );
+    stage: string | undefined,
+    isOpen: boolean,
+    reason: string,
+  ): Promise<void> {
+    const button = MenuResolver.findButton(context, message.buttonId ?? "");
 
     if (!button) {
-      return false;
+      console.info("[BOT] message_unhandled", {
+        correlationId,
+        ticketId: message.ticketId,
+        stage,
+        buttonId: message.buttonId,
+        isOpen,
+        reason,
+      });
+
+      return;
     }
 
     if (button.action.type === "transfer") {
@@ -668,7 +660,7 @@ export class HandleIncomingMessageUseCase {
         intent: button.action.intent,
       });
 
-      return true;
+      return;
     }
 
     const menu = MenuResolver.getMenu(context, button.action.menuId);
@@ -714,6 +706,6 @@ export class HandleIncomingMessageUseCase {
       });
     }
 
-    return true;
+    return;
   }
 }
