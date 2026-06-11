@@ -405,7 +405,7 @@ export class HandleIncomingMessageUseCase {
         correlationId,
         phone: message.phone,
         ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
-        payload: financeMenu,
+        payload: this.resolveFinanceMenu(context),
       });
 
       console.info("[BOT] menu_sent", {
@@ -446,7 +446,7 @@ export class HandleIncomingMessageUseCase {
         correlationId,
         phone: message.phone,
         ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
-        payload: financeMenu,
+        payload: this.resolveFinanceMenu(context),
       });
 
       console.info("[BOT] menu_sent", {
@@ -544,6 +544,20 @@ export class HandleIncomingMessageUseCase {
 
     if (!menu) {
       throw new Error('Menu "after_hours" não encontrado no BotContext');
+    }
+
+    return MenuToButtonMessage.convert(menu);
+  }
+
+  private resolveFinanceMenu(context?: BotContext): ButtonMessage {
+    if (!context) {
+      return financeMenu;
+    }
+
+    const menu = MenuResolver.getMenu(context, "finance");
+
+    if (!menu) {
+      throw new Error('Menu "finance" não encontrado no BotContext');
     }
 
     return MenuToButtonMessage.convert(menu);
