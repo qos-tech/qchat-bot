@@ -1,4 +1,54 @@
 import { HandleIncomingMessageUseCase } from "../../src/application/use-cases/handle-incoming-message-use-case.js";
+import type { BotContext } from "../../src/application/context/bot-context.js";
+
+const botContext: BotContext = {
+  botId: "test-bot",
+  botName: "Bot Teste",
+
+  triageQueueId: "46",
+
+  menus: {
+    main: {
+      id: "main",
+      title: "Menu Teste",
+      description: "Escolha:",
+      buttons: [
+        {
+          id: "option_others",
+          label: "Outros Assuntos",
+          action: {
+            type: "transfer",
+            queueId: "999",
+            intent: "other_test",
+            messageKey: "other_confirmation",
+          },
+        },
+      ],
+    },
+
+    after_hours: {
+      id: "after_hours",
+      title: "Menu Fora Teste",
+      description: "Escolha:",
+      buttons: [
+        {
+          id: "option_others",
+          label: "Outros Assuntos",
+          action: {
+            type: "transfer",
+            queueId: "999",
+            intent: "other_test",
+            messageKey: "other_confirmation",
+          },
+        },
+      ],
+    },
+  },
+
+  messages: {
+    other_confirmation: "Mensagem dinâmica do banco/teste",
+  },
+};
 
 const sessions = {
   async findByTicketId(ticketId: string) {
@@ -66,24 +116,27 @@ const useCase = new HandleIncomingMessageUseCase(
   },
 );
 
-await useCase.execute({
-  provider: "qchat",
-  messageId: "msg-1",
-  ticketId: "15551",
-  companyId: "1",
-  whatsappId: "122",
-  contactId: "84",
-  phone: "5541999999999",
-  kind: "button",
-  text: "Outros Assuntos",
-  buttonId: "option_others",
-  buttonText: "Outros Assuntos",
-  isButtonReply: true,
-  fromMe: false,
-  status: "pending",
-  queueId: "46",
-  userId: null,
-  raw: {},
-});
+await useCase.execute(
+  {
+    provider: "qchat",
+    messageId: "msg-1",
+    ticketId: "15551",
+    companyId: "1",
+    whatsappId: "122",
+    contactId: "84",
+    phone: "5541999999999",
+    kind: "button",
+    text: "Outros Assuntos",
+    buttonId: "option_others",
+    buttonText: "Outros Assuntos",
+    isButtonReply: true,
+    fromMe: false,
+    status: "pending",
+    queueId: "46",
+    userId: null,
+    raw: {},
+  },
+  botContext,
+);
 
 process.exit(0);
