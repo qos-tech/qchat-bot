@@ -240,6 +240,18 @@ export class HandleIncomingMessageUseCase {
       return;
     }
 
+    if (context && message.buttonId && businessHours.isOpen) {
+      const didSendMenu = await this.sendContextMenuAction(
+        context,
+        message,
+        correlationId,
+      );
+
+      if (didSendMenu) {
+        return;
+      }
+    }
+
     if (message.buttonId === "option_support" && !businessHours.isOpen) {
       await this.transfer.transfer({
         correlationId,
@@ -561,5 +573,62 @@ export class HandleIncomingMessageUseCase {
     }
 
     return MenuToButtonMessage.convert(menu);
+  }
+
+  private async sendContextMenuAction(
+    context: BotContext,
+    message: NormalizedIncomingMessage,
+    correlationId: string,
+  ): Promise<boolean> {
+    const button = MenuResolver.findButton(context, message.buttonId ?? "");
+
+    if (!button || button.action.type !== "send_menu") {
+      return false;
+    }
+
+    const menu = MenuResolver.getMenu(context, button.action.menuId);
+
+    if (!menu) {
+      throw new Error(
+        `Menu "${button.action.menuId}" não encontrado no BotContext`,
+      );
+    }
+
+    await this.messaging.sendButtons({
+      correlationId,
+      phone: message.phone,
+      ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
+      payload: MenuToButtonMessage.convert(menu),
+    });
+
+    console.info("[BOT] menu_sent", {
+      correlationId,
+      ticketId: message.ticketId,
+      menu: button.action.menuId,
+    });
+
+    if (button.action.menuId === "finance") {
+      await this.sessions.save({
+        ticketId: String(message.ticketId),
+        provider: message.provider,
+        ...(message.companyId ? { companyId: String(message.companyId) } : {}),
+        ...(message.whatsappId
+          ? { whatsappId: String(message.whatsappId) }
+          : {}),
+        ...(message.contactId ? { contactId: String(message.contactId) } : {}),
+        phone: message.phone,
+        stage: "awaiting_finance_menu",
+        intent: "finance",
+      });
+
+      console.info("[BOT] session_saved", {
+        correlationId,
+        ticketId: message.ticketId,
+        stage: "awaiting_finance_menu",
+        intent: "finance",
+      });
+    }
+
+    return true;
   }
 }
