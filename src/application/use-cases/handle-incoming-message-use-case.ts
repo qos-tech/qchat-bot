@@ -187,7 +187,7 @@ export class HandleIncomingMessageUseCase {
         correlationId,
         phone: message.phone,
         ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
-        payload: afterHoursMenu,
+        payload: this.resolveAfterHoursMenu(context),
       });
 
       console.info("[BOT] menu_sent", {
@@ -227,7 +227,7 @@ export class HandleIncomingMessageUseCase {
         correlationId,
         phone: message.phone,
         ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
-        payload: afterHoursMenu,
+        payload: this.resolveAfterHoursMenu(context),
       });
 
       console.info("[BOT] menu_sent", {
@@ -530,6 +530,20 @@ export class HandleIncomingMessageUseCase {
 
     if (!menu) {
       throw new Error('Menu "main" não encontrado no BotContext');
+    }
+
+    return MenuToButtonMessage.convert(menu);
+  }
+
+  private resolveAfterHoursMenu(context?: BotContext): ButtonMessage {
+    if (!context) {
+      return afterHoursMenu;
+    }
+
+    const menu = MenuResolver.getMenu(context, "after_hours");
+
+    if (!menu) {
+      throw new Error('Menu "after_hours" não encontrado no BotContext');
     }
 
     return MenuToButtonMessage.convert(menu);
