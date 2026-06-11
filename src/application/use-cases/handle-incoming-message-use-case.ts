@@ -1,8 +1,12 @@
 import type { ConversationSessionRepository } from "../../domain/bot/conversation-session-repository.js";
 import type { TicketTransferGateway } from "../../domain/bot/ticket-transfer-gateway.js";
+import type { ButtonMessage } from "../../domain/messaging/button-message.js";
 import type { MessagingGateway } from "../../domain/messaging/messaging-gateway.js";
 import type { NormalizedIncomingMessage } from "../../domain/messaging/normalized-incoming-message.js";
 import type { QueueConfig } from "../config/queue-config.js";
+import type { BotContext } from "../context/bot-context.js";
+import { MenuResolver } from "../context/menu-resolver.js";
+import { MenuToButtonMessage } from "../context/menu-to-button-message.js";
 import { createCorrelationId } from "../logging/correlation-id.js";
 import { afterHoursMenu, financeMenu, mainMenu } from "../menus/index.js";
 import {
@@ -24,7 +28,10 @@ export class HandleIncomingMessageUseCase {
     private readonly queues: QueueConfig,
   ) {}
 
-  async execute(message: NormalizedIncomingMessage): Promise<void> {
+  async execute(
+    message: NormalizedIncomingMessage,
+    context?: BotContext,
+  ): Promise<void> {
     const correlationId = createCorrelationId(message);
 
     console.info("[BOT] message_received", {
@@ -123,7 +130,7 @@ export class HandleIncomingMessageUseCase {
         correlationId,
         phone: message.phone,
         ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
-        payload: mainMenu,
+        payload: this.resolveMainMenu(context),
       });
 
       console.info("[BOT] menu_sent", {
@@ -162,7 +169,7 @@ export class HandleIncomingMessageUseCase {
         correlationId,
         phone: message.phone,
         ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
-        payload: mainMenu,
+        payload: this.resolveMainMenu(context),
       });
 
       console.info("[BOT] menu_sent", {
@@ -512,5 +519,19 @@ export class HandleIncomingMessageUseCase {
       isOpen: businessHours.isOpen,
       reason: businessHours.reason,
     });
+  }
+
+  private resolveMainMenu(context?: BotContext): ButtonMessage {
+    if (!context) {
+      return mainMenu;
+    }
+
+    const menu = MenuResolver.getMenu(context, "main");
+
+    if (!menu) {
+      throw new Error('Menu "main" não encontrado no BotContext');
+    }
+
+    return MenuToButtonMessage.convert(menu);
   }
 }

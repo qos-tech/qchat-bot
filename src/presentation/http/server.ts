@@ -3,6 +3,7 @@ import { QChatPayloadNormalizer } from "../../infrastructure/providers/qchat/qch
 import { createHandleIncomingMessageUseCase } from "../../bootstrap/create-handle-incoming-message-use-case.js";
 import { env } from "../../config/env.js";
 
+import { BotContextMapper } from "../../application/context/bot-context-mapper.js";
 import { DefaultBotConfigResolver } from "../../application/services/default-bot-config-resolver.js";
 import { PostgresBotConfigRepository } from "../../infrastructure/repositories/postgres-bot-config-repository.js";
 import { handleWebhookError } from "./handle-webhook-error.js";
@@ -104,7 +105,9 @@ app.post("/webhook/qchat/:webhookToken", async (request, reply) => {
       buttonId: normalizedMessage.buttonId,
     });
 
-    await handleIncomingMessageUseCase.execute(normalizedMessage);
+    const context = BotContextMapper.fromConfig(botConfig);
+
+    await handleIncomingMessageUseCase.execute(normalizedMessage, context);
 
     return reply.status(200).send({
       status: "ok",
