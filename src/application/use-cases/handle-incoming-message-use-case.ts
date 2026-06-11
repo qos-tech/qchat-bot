@@ -1,4 +1,6 @@
 import type { ConversationSessionRepository } from "../../domain/bot/conversation-session-repository.js";
+import type { Intent } from "../../domain/bot/intent.js";
+import type { Stage } from "../../domain/bot/stage.js";
 import type { TicketTransferGateway } from "../../domain/bot/ticket-transfer-gateway.js";
 import type { ButtonMessage } from "../../domain/messaging/button-message.js";
 import type { MessagingGateway } from "../../domain/messaging/messaging-gateway.js";
@@ -240,14 +242,15 @@ export class HandleIncomingMessageUseCase {
       return;
     }
 
-    if (context && message.buttonId && businessHours.isOpen) {
-      const didSendMenu = await this.sendContextMenuAction(
+    if (context && message.buttonId) {
+      const didExecuteAction = await this.executeContextButtonAction(
         context,
         message,
         correlationId,
+        this.resolveActiveMenuId(session?.stage, businessHours.isOpen),
       );
 
-      if (didSendMenu) {
+      if (didExecuteAction) {
         return;
       }
     }
@@ -575,15 +578,97 @@ export class HandleIncomingMessageUseCase {
     return MenuToButtonMessage.convert(menu);
   }
 
-  private async sendContextMenuAction(
+  private resolveActiveMenuId(
+    stage: Stage | undefined,
+    isBusinessHoursOpen: boolean,
+  ): string {
+    if (!isBusinessHoursOpen) {
+      return "after_hours";
+    }
+
+    if (stage === "awaiting_finance_menu") {
+      return "finance";
+    }
+
+    return "main";
+  }
+
+  private async executeContextButtonAction(
     context: BotContext,
     message: NormalizedIncomingMessage,
     correlationId: string,
+    activeMenuId: string,
   ): Promise<boolean> {
-    const button = MenuResolver.findButton(context, message.buttonId ?? "");
+    const activeMenu = MenuResolver.getMenu(context, activeMenuId);
 
-    if (!button || button.action.type !== "send_menu") {
+    if (!activeMenu) {
+      throw new Error(`Menu "${activeMenuId}" não encontrado no BotContext`);
+    }
+
+    const activeContext: BotContext = {
+      ...context,
+      menus: {
+        [activeMenuId]: activeMenu,
+      },
+    };
+
+    const button = MenuResolver.findButton(
+      activeContext,
+      message.buttonId ?? "",
+    );
+
+    if (!button) {
       return false;
+    }
+
+    if (button.action.type === "transfer") {
+      const confirmationMessage = MenuResolver.getMessage(
+        context,
+        button.action.messageKey,
+      );
+
+      if (!confirmationMessage) {
+        throw new Error(
+          `Mensagem "${button.action.messageKey}" não encontrada no BotContext`,
+        );
+      }
+
+      await this.transfer.transfer({
+        correlationId,
+        number: message.phone,
+        queueId: button.action.queueId,
+        status: "pending",
+        message: confirmationMessage,
+      });
+
+      console.info("[BOT] ticket_transferred", {
+        correlationId,
+        ticketId: message.ticketId,
+        queueId: button.action.queueId,
+        intent: button.action.intent,
+      });
+
+      await this.sessions.save({
+        ticketId: String(message.ticketId),
+        provider: message.provider,
+        ...(message.companyId ? { companyId: String(message.companyId) } : {}),
+        ...(message.whatsappId
+          ? { whatsappId: String(message.whatsappId) }
+          : {}),
+        ...(message.contactId ? { contactId: String(message.contactId) } : {}),
+        phone: message.phone,
+        stage: "waiting_human",
+        intent: button.action.intent as Intent,
+      });
+
+      console.info("[BOT] session_saved", {
+        correlationId,
+        ticketId: message.ticketId,
+        stage: "waiting_human",
+        intent: button.action.intent,
+      });
+
+      return true;
     }
 
     const menu = MenuResolver.getMenu(context, button.action.menuId);
