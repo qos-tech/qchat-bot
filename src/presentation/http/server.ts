@@ -5,6 +5,7 @@ import { env } from "../../config/env.js";
 
 import { queueConfig } from "../../application/config/queue-config.js";
 import { BotContextMapper } from "../../application/context/bot-context-mapper.js";
+import { maskWebhookToken } from "../../application/security/webhook-token.js";
 import { DefaultBotConfigResolver } from "../../application/services/default-bot-config-resolver.js";
 import { HandleIncomingMessageUseCase } from "../../application/use-cases/handle-incoming-message-use-case.js";
 import type { BotConfig } from "../../domain/bot/bot-config.js";
@@ -84,7 +85,7 @@ app.post("/webhook/qchat/:webhookToken", async (request, reply) => {
     request.log.info({
       event: "dynamic_webhook_received",
       route: "/webhook/qchat/:webhookToken",
-      webhookToken,
+      webhookToken: maskWebhookToken(webhookToken),
     });
 
     const botConfig =
@@ -93,7 +94,7 @@ app.post("/webhook/qchat/:webhookToken", async (request, reply) => {
     if (!botConfig) {
       request.log.warn({
         event: "bot_config_not_found",
-        webhookToken,
+        webhookToken: maskWebhookToken(webhookToken),
       });
 
       return reply.status(404).send({

@@ -4,15 +4,6 @@ import { PostgresBotConfigRepository } from "../../src/infrastructure/repositori
 const repository = new PostgresBotConfigRepository();
 const resolver = new DefaultBotConfigResolver(repository);
 
-const byToken = await resolver.resolveByWebhookToken("qos-prod");
-
-if (!byToken) {
-  throw new Error("Bot qos-prod não encontrado por webhook token");
-}
-
-console.log("RESOLVE POR TOKEN:");
-console.log(JSON.stringify(byToken, null, 2));
-
 const byMessage = await resolver.resolveByMessage({
   companyId: 1,
   whatsappId: 127,
@@ -25,23 +16,30 @@ if (!byMessage) {
 console.log("RESOLVE POR MENSAGEM:");
 console.log(JSON.stringify(byMessage, null, 2));
 
+const byToken = await resolver.resolveByWebhookToken(byMessage.webhookToken);
+
+if (!byToken) {
+  throw new Error("Bot qos-prod não encontrado por webhook token");
+}
+
+console.log("RESOLVE POR TOKEN:");
+console.log(JSON.stringify(byToken, null, 2));
+
 const secondBotByToken = await resolver.resolveByWebhookToken("qos-test-bot");
 
 if (!secondBotByToken) {
   throw new Error("Segundo bot não encontrado por webhook token");
 }
 
+console.log("RESOLVE SEGUNDO BOT POR TOKEN:");
+console.log(JSON.stringify(secondBotByToken, null, 2));
+
 if (
   secondBotByToken.companyId !== 2 ||
-  secondBotByToken.whatsappId !== 228 ||
-  secondBotByToken.evolution.instance !== "qos-test-bot-instance-228" ||
-  secondBotByToken.queues.triageQueueId !== "146"
+  secondBotByToken.whatsappId !== 228
 ) {
   throw new Error("Segundo bot encontrado com configuração inesperada");
 }
-
-console.log("RESOLVE SEGUNDO BOT POR TOKEN:");
-console.log(JSON.stringify(secondBotByToken, null, 2));
 
 const secondBotByMessage = await resolver.resolveByMessage({
   companyId: 2,

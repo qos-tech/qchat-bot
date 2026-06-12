@@ -6,8 +6,8 @@ na arquitetura multibot da v1.1.
 ## Visao Geral
 
 Um `BotConfig` e a configuracao persistida no banco para um bot especifico. Ele
-define o token publico do webhook dinamico, a empresa, o WhatsApp, as credenciais
-das integracoes, filas, mensagens e menus.
+define o token secreto do webhook dinamico, a empresa, o WhatsApp, as
+credenciais das integracoes, filas, mensagens e menus.
 
 Um `BotContext` e a representacao de runtime derivada do `BotConfig`. O fluxo de
 atendimento usa esse contexto para carregar menus, mensagens e a fila de triagem
@@ -42,8 +42,12 @@ Antes de criar um bot, tenha estes dados confirmados:
 Exemplo de webhook publico:
 
 ```text
-https://bot.exemplo.com/webhook/qchat/acme-prod
+https://bot.exemplo.com/webhook/qchat/3f9e0a7d-7a67-4f65-bd61-9b7d18df5a2c
 ```
+
+O valor final da URL e o `webhook_token`. Trate esse valor como segredo
+operacional, da mesma forma que um token de API. Nao use nomes previsiveis em
+producao, como `acme-prod` ou `qos-prod`.
 
 ## Passo 1 - Criar Instancia Evolution
 
@@ -99,7 +103,7 @@ Crie uma migration/seed inserindo uma linha em `bot_configs`.
 Campos principais:
 
 - `name`: nome interno do bot.
-- `webhook_token`: token usado na rota `/webhook/qchat/:webhookToken`.
+- `webhook_token`: segredo usado na rota `/webhook/qchat/:webhookToken`.
 - `company_id`: empresa no QChat.
 - `whatsapp_id`: WhatsApp no QChat.
 - `active`: `true` para habilitar o bot.
@@ -125,6 +129,54 @@ supportQueueId: 101
 financeQueueId: 103
 otherQueueId: 102
 ```
+
+Esse exemplo e de homologacao e permanece legivel para facilitar testes. Para
+producao, gere um token seguro:
+
+```bash
+node -e "console.log(require('node:crypto').randomUUID())"
+```
+
+Exemplo:
+
+```text
+3f9e0a7d-7a67-4f65-bd61-9b7d18df5a2c
+```
+
+Nunca reutilize o mesmo `webhook_token` entre bots. Em logs, dashboards e
+chamados, use o token mascarado, por exemplo:
+
+```text
+3f9e0a7d-****-****-****-9b7d18df5a2c
+```
+
+Para listar bots sem expor tokens completos:
+
+```bash
+npm run bot:list
+```
+
+Para ver o token completo de um bot especifico:
+
+```bash
+npm run bot:show -- <botId>
+```
+
+Tambem e possivel usar o par exibido na listagem:
+
+```bash
+npm run bot:show -- <companyId>:<whatsappId>
+```
+
+Para regenerar o token:
+
+```bash
+npm run bot:rotate-token -- <botId>
+npm run bot:rotate-token -- <companyId>:<whatsappId>
+```
+
+O comando de rotacao exibe o token antigo mascarado e o token novo completo.
+Atualize imediatamente a URL publica configurada no QChat depois da rotacao.
 
 ## Passo 4 - Criar Menus
 
@@ -236,7 +288,7 @@ npm run test:bot-config-resolver
 
 Valide manualmente:
 
-- `/webhook/qchat/qos-prod` continua resolvendo o bot QoS.
+- `/webhook/qchat/<token-seguro-do-qos>` continua resolvendo o bot QoS.
 - `/webhook/qchat/<novo-token>` resolve o novo bot.
 - O menu enviado mostra o titulo e os botoes do novo bot.
 - As transferencias usam os `queueId` do novo bot.
@@ -246,7 +298,7 @@ Valide manualmente:
 Exemplo de payload de validacao local, adaptando uma fixture QChat:
 
 ```text
-POST /webhook/qchat/acme-prod
+POST /webhook/qchat/3f9e0a7d-7a67-4f65-bd61-9b7d18df5a2c
 Content-Type: application/json
 
 <payload QChat com companyId=10, whatsappId=501 e queueId igual a triageQueueId>
@@ -255,7 +307,8 @@ Content-Type: application/json
 Se o bot nao resolver:
 
 - Confirme se `active = true`.
-- Confirme se o `webhook_token` esta correto.
+- Confirme se o `webhook_token` esta correto sem expor o valor completo em logs
+  ou tickets.
 - Confirme se a migration foi aplicada no banco usado pela aplicacao.
 - Confirme se `company_id` e `whatsapp_id` batem com o payload do QChat.
 
@@ -269,7 +322,7 @@ Checklist de producao:
 - Filas de triagem, suporte, financeiro e outros confirmadas.
 - Menus revisados com o cliente ou operador.
 - Mensagens de confirmacao revisadas.
-- `webhookToken` definido sem reutilizar token de outro bot.
+- `webhookToken` seguro gerado com UUID e armazenado como segredo operacional.
 - Webhook publico configurado no QChat:
 
 ```text
@@ -287,7 +340,8 @@ https://<host-publico>/webhook/qchat/<webhookToken>
 ## Exemplo de Seed
 
 Use este exemplo como base. Troque nomes, tokens, URLs, filas e mensagens antes
-de aplicar em producao.
+de aplicar em producao. O `webhook_token` abaixo deve ser substituido por um UUID
+gerado para o bot real.
 
 ```ts
 import { MigrationBuilder } from "node-pg-migrate";
@@ -312,7 +366,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     )
     VALUES (
       'ACME Atendimento',
-      'acme-prod',
+      '3f9e0a7d-7a67-4f65-bd61-9b7d18df5a2c',
       10,
       501,
       true,
@@ -420,7 +474,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 export async function down(pgm: MigrationBuilder): Promise<void> {
   pgm.sql(`
     DELETE FROM bot_configs
-    WHERE webhook_token = 'acme-prod';
+    WHERE webhook_token = '3f9e0a7d-7a67-4f65-bd61-9b7d18df5a2c';
   `);
 }
 ```

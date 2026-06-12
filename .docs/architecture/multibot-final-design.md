@@ -11,6 +11,12 @@ por um `BotConfig` persistido no banco de dados. A rota dinamica resolve esse
 registro pelo `webhookToken`, cria gateways com as credenciais daquele bot e
 executa o fluxo com um `BotContext` derivado do `BotConfig`.
 
+O `webhookToken` e uma credencial operacional. Em producao ele deve ser um valor
+nao previsivel, gerado por UUID, e nao deve aparecer completo em logs ou tickets.
+Operacionalmente, a aplicacao oferece scripts para listar bots com token
+mascarado, exibir detalhes de um bot especifico e regenerar tokens sem SQL
+manual.
+
 Existem dois modos de operacao:
 
 - Fluxo legado: `/webhook/qchat`, sem `BotContext`, usando configuracoes de ENV.
@@ -31,7 +37,8 @@ POST /webhook/qchat/:webhookToken
 Fluxo atual:
 
 1. O Fastify recebe o payload QChat.
-2. A rota extrai `webhookToken` de `request.params`.
+2. A rota extrai `webhookToken` de `request.params` e usa o valor completo
+   apenas para resolver o bot.
 3. `DefaultBotConfigResolver.resolveByWebhookToken(webhookToken)` busca um
    `BotConfig` ativo em `bot_configs`.
 4. Se nao encontrar bot, a rota responde `404`.
@@ -154,7 +161,7 @@ Campos relevantes:
 
 - `id`: identificador interno do bot.
 - `name`: nome do bot.
-- `webhookToken`: token usado na rota dinamica.
+- `webhookToken`: segredo usado na rota dinamica.
 - `companyId`: empresa QChat associada.
 - `whatsappId`: WhatsApp QChat associado.
 - `active`: define se o bot pode ser resolvido.
@@ -320,13 +327,21 @@ Fallbacks ainda presentes no fluxo dinamico:
 ## Como Dois Bots Coexistem
 
 Dois bots coexistem porque cada um tem um `webhookToken` e uma configuracao
-propria em `bot_configs`.
+propria em `bot_configs`. Em producao, esses tokens devem ser UUIDs seguros. Em
+homologacao, tokens legiveis podem ser usados quando facilitarem testes.
 
 Exemplo:
 
 ```text
 /webhook/qchat/qos-prod
 /webhook/qchat/qos-test-bot
+```
+
+O exemplo `qos-prod` representa um identificador historico/desenvolvimento. Para
+producao, o formato esperado e:
+
+```text
+/webhook/qchat/3f9e0a7d-7a67-4f65-bd61-9b7d18df5a2c
 ```
 
 `qos-prod` pode apontar para:
@@ -365,6 +380,22 @@ Novas integracoes devem entrar por contratos nas camadas corretas:
 O use case deve continuar recebendo contratos e dados normalizados. Ele nao deve
 depender diretamente de APIs externas.
 
+## Gestao de Webhook Tokens
+
+Comandos operacionais:
+
+- `npm run bot:list`: lista bots ativos com token mascarado.
+- `npm run bot:show -- <botId>`: exibe detalhes e token completo.
+- `npm run bot:show -- <companyId>:<whatsappId>`: alternativa quando o id interno
+  nao esta em maos.
+- `npm run bot:rotate-token -- <botId>`: gera novo token e atualiza o banco.
+- `npm run bot:rotate-token -- <companyId>:<whatsappId>`: alternativa por origem
+  QChat.
+
+Na rotacao, o token antigo aparece apenas mascarado. O token novo aparece
+completo uma unica vez para que a configuracao do webhook externo seja
+atualizada.
+
 ## Limitacoes Atuais
 
 Limitacoes conhecidas da v1.1:
@@ -391,6 +422,8 @@ Evolucoes recomendadas:
 - Criar uma factory de use case dinamico para reduzir montagem em `server.ts`.
 - Validar `menus_config`, `messages_config` e `queues_config` com schema antes de
   expor o bot.
+- Criar processo operacional para emitir, armazenar, rotacionar e revogar
+  `webhookToken` com auditoria.
 - Incluir `botId` ou `companyId` na estrategia de sessao para fortalecer
   isolamento multibot.
 - Adicionar testes automatizados para rota dinamica com dois bots.

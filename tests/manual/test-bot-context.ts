@@ -5,7 +5,10 @@ import { PostgresBotConfigRepository } from "../../src/infrastructure/repositori
 const repository = new PostgresBotConfigRepository();
 const resolver = new DefaultBotConfigResolver(repository);
 
-const config = await resolver.resolveByWebhookToken("qos-prod");
+const config = await resolver.resolveByMessage({
+  companyId: 1,
+  whatsappId: 127,
+});
 
 if (!config) {
   throw new Error("Bot não encontrado");
