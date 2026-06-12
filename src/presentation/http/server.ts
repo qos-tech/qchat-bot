@@ -3,9 +3,16 @@ import { QChatPayloadNormalizer } from "../../infrastructure/providers/qchat/qch
 import { createHandleIncomingMessageUseCase } from "../../bootstrap/create-handle-incoming-message-use-case.js";
 import { env } from "../../config/env.js";
 
+import { queueConfig } from "../../application/config/queue-config.js";
 import { BotContextMapper } from "../../application/context/bot-context-mapper.js";
 import { DefaultBotConfigResolver } from "../../application/services/default-bot-config-resolver.js";
+import { HandleIncomingMessageUseCase } from "../../application/use-cases/handle-incoming-message-use-case.js";
+import type { BotConfig } from "../../domain/bot/bot-config.js";
+import { EvolutionMessagingGateway } from "../../infrastructure/gateways/evolution-messaging-gateway.js";
+import { QChatTicketTransferGateway } from "../../infrastructure/gateways/qchat-ticket-transfer-gateway.js";
 import { PostgresBotConfigRepository } from "../../infrastructure/repositories/postgres-bot-config-repository.js";
+import { PostgresConversationSessionRepository } from "../../infrastructure/repositories/postgres-conversation-session-repository.js";
+import { DefaultBusinessHoursService } from "../../infrastructure/services/default-business-hours-service.js";
 import { handleWebhookError } from "./handle-webhook-error.js";
 
 const app = Fastify({
@@ -17,6 +24,18 @@ const handleIncomingMessageUseCase = createHandleIncomingMessageUseCase();
 
 const botConfigRepository = new PostgresBotConfigRepository();
 const botConfigResolver = new DefaultBotConfigResolver(botConfigRepository);
+
+function createDynamicHandleIncomingMessageUseCase(
+  botConfig: BotConfig,
+): HandleIncomingMessageUseCase {
+  return new HandleIncomingMessageUseCase(
+    new PostgresConversationSessionRepository(),
+    new EvolutionMessagingGateway(botConfig.evolution),
+    new QChatTicketTransferGateway(),
+    new DefaultBusinessHoursService(),
+    queueConfig,
+  );
+}
 
 app.get("/health", async () => {
   return {
@@ -106,8 +125,13 @@ app.post("/webhook/qchat/:webhookToken", async (request, reply) => {
     });
 
     const context = BotContextMapper.fromConfig(botConfig);
+    const dynamicHandleIncomingMessageUseCase =
+      createDynamicHandleIncomingMessageUseCase(botConfig);
 
-    await handleIncomingMessageUseCase.execute(normalizedMessage, context);
+    await dynamicHandleIncomingMessageUseCase.execute(
+      normalizedMessage,
+      context,
+    );
 
     return reply.status(200).send({
       status: "ok",

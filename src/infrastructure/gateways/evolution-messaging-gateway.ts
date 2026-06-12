@@ -4,10 +4,22 @@ import { env } from "../../config/env.js";
 import { ExternalApiError } from "../../domain/errors/external-api-error.js";
 import { withRetry } from "../http/with-retry.js";
 
+export type EvolutionMessagingGatewayConfig = {
+  apiUrl: string;
+  apiKey: string;
+  instance: string;
+};
+
 export class EvolutionMessagingGateway implements MessagingGateway {
-  private readonly apiUrl = env.EVOLUTION_API_URL;
-  private readonly apiKey = env.EVOLUTION_API_KEY;
-  private readonly instance = env.EVOLUTION_INSTANCE;
+  private readonly apiUrl: string;
+  private readonly apiKey: string;
+  private readonly instance: string;
+
+  constructor(config?: EvolutionMessagingGatewayConfig) {
+    this.apiUrl = config?.apiUrl ?? env.EVOLUTION_API_URL;
+    this.apiKey = config?.apiKey ?? env.EVOLUTION_API_KEY;
+    this.instance = config?.instance ?? env.EVOLUTION_INSTANCE;
+  }
 
   async sendText(params: {
     correlationId?: string;
