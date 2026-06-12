@@ -79,13 +79,15 @@ export class HandleIncomingMessageUseCase {
       return;
     }
 
-    if (String(message.queueId) !== this.queues.triageQueueId) {
+    const triageQueueId = context?.triageQueueId ?? this.queues.triageQueueId;
+
+    if (String(message.queueId) !== triageQueueId) {
       console.info("[BOT] message_ignored", {
         correlationId,
         reason: "not_triage_queue",
         ticketId: message.ticketId,
         queueId: message.queueId,
-        triageQueueId: this.queues.triageQueueId,
+        triageQueueId,
       });
 
       return;

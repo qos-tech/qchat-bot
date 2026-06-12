@@ -87,10 +87,13 @@ const messaging = {
 
 const transfer = {
   async transfer(params: unknown) {
+    transferCalled = true;
     console.log("TRANSFERIU:");
     console.log(params);
   },
 };
+
+let transferCalled = false;
 
 const businessHours = {
   async check() {
@@ -109,7 +112,7 @@ const useCase = new HandleIncomingMessageUseCase(
   transfer,
   businessHours,
   {
-    triageQueueId: "46",
+    triageQueueId: "legacy-triage",
     supportQueueId: "1",
     financeQueueId: "3",
     otherQueueId: "2",
@@ -138,5 +141,9 @@ await useCase.execute(
   },
   botContext,
 );
+
+if (!transferCalled) {
+  throw new Error("Fluxo dinâmico não usou context.triageQueueId");
+}
 
 process.exit(0);

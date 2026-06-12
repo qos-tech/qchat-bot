@@ -1,6 +1,6 @@
 # 003 - Remove QueueConfig from Dynamic Flow
 
-Status: TODO
+Status: DONE
 
 ## Objetivo
 
