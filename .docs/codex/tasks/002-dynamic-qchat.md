@@ -1,6 +1,6 @@
 # 002 - Dynamic QChat Gateway
 
-Status: TODO
+Status: DONE
 
 ## Objetivo
 

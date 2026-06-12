@@ -31,7 +31,7 @@ function createDynamicHandleIncomingMessageUseCase(
   return new HandleIncomingMessageUseCase(
     new PostgresConversationSessionRepository(),
     new EvolutionMessagingGateway(botConfig.evolution),
-    new QChatTicketTransferGateway(),
+    new QChatTicketTransferGateway(botConfig.qchat),
     new DefaultBusinessHoursService(),
     queueConfig,
   );
