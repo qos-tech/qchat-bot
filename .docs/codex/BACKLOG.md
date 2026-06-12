@@ -9,6 +9,7 @@
 
 ## Tarefas
 
-- [ ] 001 - Dynamic Evolution Gateway
-- [ ] 002 - Dynamic QChat Gateway
-- [ ] 003 - Remove QueueConfig from dynamic flow
+- [x] 001 - Dynamic Evolution Gateway
+- [x] 002 - Dynamic QChat Gateway
+- [x] 003 - Remove QueueConfig from dynamic flow
+- [ ] 004 - Add second bot configuration for multibot validation
