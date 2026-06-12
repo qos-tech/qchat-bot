@@ -6,6 +6,10 @@ const resolver = new DefaultBotConfigResolver(repository);
 
 const byToken = await resolver.resolveByWebhookToken("qos-prod");
 
+if (!byToken) {
+  throw new Error("Bot qos-prod não encontrado por webhook token");
+}
+
 console.log("RESOLVE POR TOKEN:");
 console.log(JSON.stringify(byToken, null, 2));
 
@@ -14,7 +18,41 @@ const byMessage = await resolver.resolveByMessage({
   whatsappId: 127,
 });
 
+if (!byMessage) {
+  throw new Error("Bot qos-prod não encontrado por companyId/whatsappId");
+}
+
 console.log("RESOLVE POR MENSAGEM:");
 console.log(JSON.stringify(byMessage, null, 2));
+
+const secondBotByToken = await resolver.resolveByWebhookToken("qos-test-bot");
+
+if (!secondBotByToken) {
+  throw new Error("Segundo bot não encontrado por webhook token");
+}
+
+if (
+  secondBotByToken.companyId !== 2 ||
+  secondBotByToken.whatsappId !== 228 ||
+  secondBotByToken.evolution.instance !== "qos-test-bot-instance-228" ||
+  secondBotByToken.queues.triageQueueId !== "146"
+) {
+  throw new Error("Segundo bot encontrado com configuração inesperada");
+}
+
+console.log("RESOLVE SEGUNDO BOT POR TOKEN:");
+console.log(JSON.stringify(secondBotByToken, null, 2));
+
+const secondBotByMessage = await resolver.resolveByMessage({
+  companyId: 2,
+  whatsappId: 228,
+});
+
+if (!secondBotByMessage) {
+  throw new Error("Segundo bot não encontrado por companyId/whatsappId");
+}
+
+console.log("RESOLVE SEGUNDO BOT POR MENSAGEM:");
+console.log(JSON.stringify(secondBotByMessage, null, 2));
 
 process.exit(0);

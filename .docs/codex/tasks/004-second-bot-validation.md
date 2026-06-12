@@ -1,6 +1,6 @@
 # 004 - Second Bot Configuration Validation
 
-Status: TODO
+Status: DONE
 
 ## Objetivo
 
