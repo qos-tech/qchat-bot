@@ -1,12 +1,15 @@
 import type { BotConfigRepository } from "../../domain/bot/bot-config-repository.js";
 import type { BotConfig } from "../../domain/bot/bot-config.js";
+import { BotConfigValidator } from "../config/bot-config-validator.js";
 import type { BotConfigResolver } from "./bot-config-resolver.js";
 
 export class DefaultBotConfigResolver implements BotConfigResolver {
   constructor(private readonly repository: BotConfigRepository) {}
 
   async resolveByWebhookToken(webhookToken: string): Promise<BotConfig | null> {
-    return this.repository.findByWebhookToken(webhookToken);
+    return this.validateResolved(
+      await this.repository.findByWebhookToken(webhookToken),
+    );
   }
 
   async resolveByMessage(params: {
@@ -17,9 +20,21 @@ export class DefaultBotConfigResolver implements BotConfigResolver {
       return null;
     }
 
-    return this.repository.findByCompanyAndWhatsapp(
-      params.companyId,
-      params.whatsappId,
+    return this.validateResolved(
+      await this.repository.findByCompanyAndWhatsapp(
+        params.companyId,
+        params.whatsappId,
+      ),
     );
+  }
+
+  private validateResolved(config: BotConfig | null): BotConfig | null {
+    if (!config) {
+      return null;
+    }
+
+    BotConfigValidator.validate(config);
+
+    return config;
   }
 }
