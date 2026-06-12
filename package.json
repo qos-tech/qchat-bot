@@ -14,6 +14,7 @@
     "bot:list": "tsx src/scripts/bot-list.ts",
     "bot:show": "tsx src/scripts/bot-show.ts",
     "bot:rotate-token": "tsx src/scripts/bot-rotate-token.ts",
+    "bot:health": "tsx src/scripts/bot-health.ts",
     "cleanup:sessions": "node dist/scripts/cleanup-sessions.js",
     "test:normalizer": "tsx tests/manual/test-qchat-normalizer.ts",
     "test:session-repo": "tsx tests/manual/test-session-repository.ts",
@@ -25,6 +26,7 @@
     "test:bot-config": "tsx tests/manual/test-bot-config-repository.ts",
     "test:bot-config-resolver": "tsx tests/manual/test-bot-config-resolver.ts",
     "test:bot-config-validator": "tsx tests/manual/test-bot-config-validator.ts",
+    "test:bot-health": "tsx tests/manual/test-bot-health.ts",
     "test:bot-context": "tsx tests/manual/test-bot-context.ts",
     "test:menu-resolver": "tsx tests/manual/test-menu-resolver.ts"
   },
