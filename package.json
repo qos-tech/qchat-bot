@@ -18,6 +18,7 @@
     "cleanup:sessions": "node dist/scripts/cleanup-sessions.js",
     "test:normalizer": "tsx tests/manual/test-qchat-normalizer.ts",
     "test:evolution-normalizer": "tsx tests/manual/test-evolution-normalizer.ts",
+    "test:evolution-webhook": "tsx tests/manual/test-evolution-webhook.ts",
     "test:session-repo": "tsx tests/manual/test-session-repository.ts",
     "test:business-hours": "tsx tests/manual/test-business-hours.ts",
     "test:use-case": "tsx tests/manual/test-handle-incoming-message.ts",
