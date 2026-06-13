@@ -4,6 +4,8 @@ import type { BotContext } from "../../src/application/context/bot-context.js";
 const botContext: BotContext = {
   botId: "test-bot",
   botName: "Bot Teste",
+  companyId: 1,
+  whatsappId: 122,
 
   triageQueueId: "46",
 
@@ -117,6 +119,11 @@ const useCase = new HandleIncomingMessageUseCase(
     financeQueueId: "3",
     otherQueueId: "2",
   },
+  {
+    async findLatestByContact() {
+      return null;
+    },
+  },
 );
 
 await useCase.execute(
@@ -187,6 +194,11 @@ const evolutionUseCase = new HandleIncomingMessageUseCase(
     supportQueueId: "1",
     financeQueueId: "3",
     otherQueueId: "2",
+  },
+  {
+    async findLatestByContact() {
+      return null;
+    },
   },
 );
 

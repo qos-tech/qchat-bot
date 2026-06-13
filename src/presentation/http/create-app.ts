@@ -14,6 +14,7 @@ import { EvolutionPayloadNormalizer } from "../../infrastructure/providers/evolu
 import { QChatPayloadNormalizer } from "../../infrastructure/providers/qchat/qchat-payload-normalizer.js";
 import { PostgresBotConfigRepository } from "../../infrastructure/repositories/postgres-bot-config-repository.js";
 import { PostgresConversationSessionRepository } from "../../infrastructure/repositories/postgres-conversation-session-repository.js";
+import { PostgresQChatTicketStatusLookup } from "../../infrastructure/repositories/postgres-qchat-ticket-status-lookup.js";
 import { DefaultBusinessHoursService } from "../../infrastructure/services/default-business-hours-service.js";
 import { handleWebhookError } from "./handle-webhook-error.js";
 
@@ -41,6 +42,7 @@ function defaultCreateDynamicHandleIncomingMessageUseCase(
     new QChatTicketTransferGateway(botConfig.qchat),
     new DefaultBusinessHoursService(),
     queueConfig,
+    new PostgresQChatTicketStatusLookup(),
   );
 }
 

@@ -1,5 +1,6 @@
 import type { ConversationSessionRepository } from "../../domain/bot/conversation-session-repository.js";
 import type { Intent } from "../../domain/bot/intent.js";
+import type { QChatTicketStatusLookup } from "../../domain/bot/qchat-ticket-status-lookup.js";
 import type { TicketTransferGateway } from "../../domain/bot/ticket-transfer-gateway.js";
 import type { ButtonMessage } from "../../domain/messaging/button-message.js";
 import type { MessagingGateway } from "../../domain/messaging/messaging-gateway.js";
@@ -27,6 +28,7 @@ export class HandleIncomingMessageUseCase {
     private readonly transfer: TicketTransferGateway,
     private readonly businessHours: BusinessHoursService,
     private readonly queues: QueueConfig,
+    private readonly qchatTicketStatusLookup: QChatTicketStatusLookup,
   ) {}
 
   async execute(
@@ -114,18 +116,52 @@ export class HandleIncomingMessageUseCase {
     });
 
     if (session?.stage === "waiting_human") {
-      await this.sessions.deleteByTicketId(conversationId);
+      if (message.provider === "evolution") {
+        const latestTicket = await this.lookupLatestQChatTicket(
+          message,
+          context,
+          correlationId,
+        );
 
-      console.info("[BOT] session_deleted", {
-        correlationId,
-        reason: "stale_waiting_human_session",
-        conversationId,
-        ticketId: message.ticketId,
-        queueId: message.queueId,
-        userId: message.userId,
-      });
+        if (latestTicket && this.isHumanTicketOpen(latestTicket.status)) {
+          console.info("[BOT] message_ignored", {
+            correlationId,
+            reason: "human_ticket_still_open",
+            conversationId,
+            ticketId: message.ticketId,
+            qchatTicketId: latestTicket.ticketId,
+            qchatTicketStatus: latestTicket.status,
+          });
 
-      session = null;
+          return;
+        }
+
+        await this.sessions.deleteByTicketId(conversationId);
+
+        console.info("[BOT] session_deleted", {
+          correlationId,
+          reason: "human_ticket_closed_in_qchat",
+          conversationId,
+          ticketId: message.ticketId,
+          qchatTicketId: latestTicket?.ticketId,
+          qchatTicketStatus: latestTicket?.status,
+        });
+
+        session = null;
+      } else {
+        await this.sessions.deleteByTicketId(conversationId);
+
+        console.info("[BOT] session_deleted", {
+          correlationId,
+          reason: "stale_waiting_human_session",
+          conversationId,
+          ticketId: message.ticketId,
+          queueId: message.queueId,
+          userId: message.userId,
+        });
+
+        session = null;
+      }
     }
 
     const businessHours = await this.businessHours.check(
@@ -729,5 +765,61 @@ export class HandleIncomingMessageUseCase {
     }
 
     return;
+  }
+
+  private async lookupLatestQChatTicket(
+    message: NormalizedIncomingMessage,
+    context: BotContext | undefined,
+    correlationId: string,
+  ) {
+    const companyId = message.companyId ?? context?.companyId;
+    const whatsappId = message.whatsappId ?? context?.whatsappId;
+
+    try {
+      const params: {
+        phone: string;
+        companyId?: string | number;
+        whatsappId?: string | number;
+      } = {
+        phone: message.phone,
+      };
+
+      if (companyId !== undefined) {
+        params.companyId = companyId;
+      }
+
+      if (whatsappId !== undefined) {
+        params.whatsappId = whatsappId;
+      }
+
+      const latestTicket =
+        await this.qchatTicketStatusLookup.findLatestByContact(params);
+
+      console.info("[BOT] qchat_ticket_status_checked", {
+        correlationId,
+        phone: message.phone,
+        companyId,
+        whatsappId,
+        found: Boolean(latestTicket),
+        qchatTicketId: latestTicket?.ticketId,
+        qchatTicketStatus: latestTicket?.status,
+      });
+
+      return latestTicket;
+    } catch (error) {
+      console.warn("[BOT] qchat_ticket_status_lookup_failed", {
+        correlationId,
+        phone: message.phone,
+        companyId,
+        whatsappId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      return null;
+    }
+  }
+
+  private isHumanTicketOpen(status: string): boolean {
+    return ["open", "pending"].includes(status.toLowerCase());
   }
 }

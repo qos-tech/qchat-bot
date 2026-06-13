@@ -3,6 +3,7 @@ import { HandleIncomingMessageUseCase } from "../application/use-cases/handle-in
 import { EvolutionMessagingGateway } from "../infrastructure/gateways/evolution-messaging-gateway.js";
 import { QChatTicketTransferGateway } from "../infrastructure/gateways/qchat-ticket-transfer-gateway.js";
 import { PostgresConversationSessionRepository } from "../infrastructure/repositories/postgres-conversation-session-repository.js";
+import { PostgresQChatTicketStatusLookup } from "../infrastructure/repositories/postgres-qchat-ticket-status-lookup.js";
 import { DefaultBusinessHoursService } from "../infrastructure/services/default-business-hours-service.js";
 
 export function createHandleIncomingMessageUseCase(): HandleIncomingMessageUseCase {
@@ -11,6 +12,7 @@ export function createHandleIncomingMessageUseCase(): HandleIncomingMessageUseCa
   const messaging = new EvolutionMessagingGateway();
 
   const transfer = new QChatTicketTransferGateway();
+  const qchatTicketStatusLookup = new PostgresQChatTicketStatusLookup();
 
   const businessHours = new DefaultBusinessHoursService();
 
@@ -20,5 +22,6 @@ export function createHandleIncomingMessageUseCase(): HandleIncomingMessageUseCa
     transfer,
     businessHours,
     queueConfig,
+    qchatTicketStatusLookup,
   );
 }

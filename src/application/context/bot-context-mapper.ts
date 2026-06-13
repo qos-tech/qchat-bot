@@ -6,6 +6,10 @@ export class BotContextMapper {
     return {
       botId: config.id,
       botName: config.name,
+      ...(config.companyId !== undefined ? { companyId: config.companyId } : {}),
+      ...(config.whatsappId !== undefined
+        ? { whatsappId: config.whatsappId }
+        : {}),
 
       triageQueueId: config.queues.triageQueueId,
 

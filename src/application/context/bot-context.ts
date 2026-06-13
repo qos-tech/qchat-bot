@@ -1,6 +1,8 @@
 export type BotContext = {
   botId: string;
   botName: string;
+  companyId?: number;
+  whatsappId?: number;
 
   triageQueueId: string;
 
