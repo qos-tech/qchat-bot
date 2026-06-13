@@ -1,8 +1,14 @@
 import type { ConversationSessionRepository } from "../../domain/bot/conversation-session-repository.js";
+import type { Intent } from "../../domain/bot/intent.js";
+import type { QChatTicketStatusLookup } from "../../domain/bot/qchat-ticket-status-lookup.js";
 import type { TicketTransferGateway } from "../../domain/bot/ticket-transfer-gateway.js";
+import type { ButtonMessage } from "../../domain/messaging/button-message.js";
 import type { MessagingGateway } from "../../domain/messaging/messaging-gateway.js";
 import type { NormalizedIncomingMessage } from "../../domain/messaging/normalized-incoming-message.js";
 import type { QueueConfig } from "../config/queue-config.js";
+import type { BotContext } from "../context/bot-context.js";
+import { MenuResolver } from "../context/menu-resolver.js";
+import { MenuToButtonMessage } from "../context/menu-to-button-message.js";
 import { createCorrelationId } from "../logging/correlation-id.js";
 import { afterHoursMenu, financeMenu, mainMenu } from "../menus/index.js";
 import {
@@ -22,13 +28,19 @@ export class HandleIncomingMessageUseCase {
     private readonly transfer: TicketTransferGateway,
     private readonly businessHours: BusinessHoursService,
     private readonly queues: QueueConfig,
+    private readonly qchatTicketStatusLookup: QChatTicketStatusLookup,
   ) {}
 
-  async execute(message: NormalizedIncomingMessage): Promise<void> {
+  async execute(
+    message: NormalizedIncomingMessage,
+    context?: BotContext,
+  ): Promise<void> {
     const correlationId = createCorrelationId(message);
+    const conversationId = message.conversationId;
 
     console.info("[BOT] message_received", {
       correlationId,
+      conversationId,
       ticketId: message.ticketId,
       phone: message.phone,
       kind: message.kind,
@@ -42,6 +54,7 @@ export class HandleIncomingMessageUseCase {
       console.info("[BOT] message_ignored", {
         correlationId,
         reason: "from_me",
+        conversationId,
         ticketId: message.ticketId,
       });
 
@@ -49,11 +62,12 @@ export class HandleIncomingMessageUseCase {
     }
 
     if (message.status === "closed") {
-      await this.sessions.deleteByTicketId(String(message.ticketId));
+      await this.sessions.deleteByTicketId(conversationId);
 
       console.info("[BOT] session_deleted", {
         correlationId,
         reason: "ticket_closed",
+        conversationId,
         ticketId: message.ticketId,
       });
 
@@ -64,6 +78,7 @@ export class HandleIncomingMessageUseCase {
       console.info("[BOT] message_ignored", {
         correlationId,
         reason: "already_assigned",
+        conversationId,
         ticketId: message.ticketId,
         userId: message.userId,
       });
@@ -71,22 +86,29 @@ export class HandleIncomingMessageUseCase {
       return;
     }
 
-    if (String(message.queueId) !== this.queues.triageQueueId) {
+    const triageQueueId = context?.triageQueueId ?? this.queues.triageQueueId;
+
+    if (
+      message.provider === "qchat" &&
+      String(message.queueId) !== triageQueueId
+    ) {
       console.info("[BOT] message_ignored", {
         correlationId,
         reason: "not_triage_queue",
+        conversationId,
         ticketId: message.ticketId,
         queueId: message.queueId,
-        triageQueueId: this.queues.triageQueueId,
+        triageQueueId,
       });
 
       return;
     }
 
-    let session = await this.sessions.findByTicketId(String(message.ticketId));
+    let session = await this.sessions.findByTicketId(conversationId);
 
     console.info("[BOT] session_checked", {
       correlationId,
+      conversationId,
       ticketId: message.ticketId,
       exists: Boolean(session),
       stage: session?.stage,
@@ -94,17 +116,52 @@ export class HandleIncomingMessageUseCase {
     });
 
     if (session?.stage === "waiting_human") {
-      await this.sessions.deleteByTicketId(String(message.ticketId));
+      if (message.provider === "evolution") {
+        const latestTicket = await this.lookupLatestQChatTicket(
+          message,
+          context,
+          correlationId,
+        );
 
-      console.info("[BOT] session_deleted", {
-        correlationId,
-        reason: "stale_waiting_human_session",
-        ticketId: message.ticketId,
-        queueId: message.queueId,
-        userId: message.userId,
-      });
+        if (latestTicket && this.isHumanTicketOpen(latestTicket.status)) {
+          console.info("[BOT] message_ignored", {
+            correlationId,
+            reason: "human_ticket_still_open",
+            conversationId,
+            ticketId: message.ticketId,
+            qchatTicketId: latestTicket.ticketId,
+            qchatTicketStatus: latestTicket.status,
+          });
 
-      session = null;
+          return;
+        }
+
+        await this.sessions.deleteByTicketId(conversationId);
+
+        console.info("[BOT] session_deleted", {
+          correlationId,
+          reason: "human_ticket_closed_in_qchat",
+          conversationId,
+          ticketId: message.ticketId,
+          qchatTicketId: latestTicket?.ticketId,
+          qchatTicketStatus: latestTicket?.status,
+        });
+
+        session = null;
+      } else {
+        await this.sessions.deleteByTicketId(conversationId);
+
+        console.info("[BOT] session_deleted", {
+          correlationId,
+          reason: "stale_waiting_human_session",
+          conversationId,
+          ticketId: message.ticketId,
+          queueId: message.queueId,
+          userId: message.userId,
+        });
+
+        session = null;
+      }
     }
 
     const businessHours = await this.businessHours.check(
@@ -113,6 +170,7 @@ export class HandleIncomingMessageUseCase {
 
     console.info("[BOT] business_hours_checked", {
       correlationId,
+      conversationId,
       ticketId: message.ticketId,
       isOpen: businessHours.isOpen,
       reason: businessHours.reason,
@@ -123,17 +181,18 @@ export class HandleIncomingMessageUseCase {
         correlationId,
         phone: message.phone,
         ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
-        payload: mainMenu,
+        payload: this.resolveMainMenu(context),
       });
 
       console.info("[BOT] menu_sent", {
         correlationId,
+        conversationId,
         ticketId: message.ticketId,
         menu: "main",
       });
 
       await this.sessions.save({
-        ticketId: String(message.ticketId),
+        ticketId: conversationId,
         provider: message.provider,
         ...(message.companyId ? { companyId: String(message.companyId) } : {}),
         ...(message.whatsappId
@@ -146,6 +205,7 @@ export class HandleIncomingMessageUseCase {
 
       console.info("[BOT] session_saved", {
         correlationId,
+        conversationId,
         ticketId: message.ticketId,
         stage: "awaiting_main_menu",
       });
@@ -162,11 +222,12 @@ export class HandleIncomingMessageUseCase {
         correlationId,
         phone: message.phone,
         ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
-        payload: mainMenu,
+        payload: this.resolveMainMenu(context),
       });
 
       console.info("[BOT] menu_sent", {
         correlationId,
+        conversationId,
         ticketId: message.ticketId,
         menu: "main",
         reason: "loop",
@@ -180,17 +241,18 @@ export class HandleIncomingMessageUseCase {
         correlationId,
         phone: message.phone,
         ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
-        payload: afterHoursMenu,
+        payload: this.resolveAfterHoursMenu(context),
       });
 
       console.info("[BOT] menu_sent", {
         correlationId,
+        conversationId,
         ticketId: message.ticketId,
         menu: "after_hours",
       });
 
       await this.sessions.save({
-        ticketId: String(message.ticketId),
+        ticketId: conversationId,
         provider: message.provider,
         ...(message.companyId ? { companyId: String(message.companyId) } : {}),
         ...(message.whatsappId
@@ -203,6 +265,7 @@ export class HandleIncomingMessageUseCase {
 
       console.info("[BOT] session_saved", {
         correlationId,
+        conversationId,
         ticketId: message.ticketId,
         stage: "awaiting_main_menu",
         mode: "after_hours",
@@ -220,14 +283,42 @@ export class HandleIncomingMessageUseCase {
         correlationId,
         phone: message.phone,
         ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
-        payload: afterHoursMenu,
+        payload: this.resolveAfterHoursMenu(context),
       });
 
       console.info("[BOT] menu_sent", {
         correlationId,
+        conversationId,
         ticketId: message.ticketId,
         menu: "after_hours",
         reason: "loop",
+      });
+
+      return;
+    }
+
+    if (context) {
+      if (message.isButtonReply) {
+        await this.executeContextButtonAction(
+          context,
+          message,
+          conversationId,
+          correlationId,
+          session?.stage,
+          businessHours.isOpen,
+          businessHours.reason,
+        );
+
+        return;
+      }
+
+      console.info("[BOT] message_unhandled", {
+        correlationId,
+        ticketId: message.ticketId,
+        stage: session?.stage,
+        buttonId: message.buttonId,
+        isOpen: businessHours.isOpen,
+        reason: businessHours.reason,
       });
 
       return;
@@ -251,7 +342,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       await this.sessions.save({
-        ticketId: String(message.ticketId),
+        ticketId: conversationId,
         provider: message.provider,
         ...(message.companyId ? { companyId: String(message.companyId) } : {}),
         ...(message.whatsappId
@@ -292,7 +383,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       await this.sessions.save({
-        ticketId: String(message.ticketId),
+        ticketId: conversationId,
         provider: message.provider,
         ...(message.companyId ? { companyId: String(message.companyId) } : {}),
         ...(message.whatsappId
@@ -332,7 +423,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       await this.sessions.save({
-        ticketId: String(message.ticketId),
+        ticketId: conversationId,
         provider: message.provider,
         ...(message.companyId ? { companyId: String(message.companyId) } : {}),
         ...(message.whatsappId
@@ -371,7 +462,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       await this.sessions.save({
-        ticketId: String(message.ticketId),
+        ticketId: conversationId,
         provider: message.provider,
         ...(message.companyId ? { companyId: String(message.companyId) } : {}),
         ...(message.whatsappId
@@ -398,7 +489,7 @@ export class HandleIncomingMessageUseCase {
         correlationId,
         phone: message.phone,
         ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
-        payload: financeMenu,
+        payload: this.resolveFinanceMenu(context),
       });
 
       console.info("[BOT] menu_sent", {
@@ -408,7 +499,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       await this.sessions.save({
-        ticketId: String(message.ticketId),
+        ticketId: conversationId,
         provider: message.provider,
         ...(message.companyId ? { companyId: String(message.companyId) } : {}),
         ...(message.whatsappId
@@ -439,7 +530,7 @@ export class HandleIncomingMessageUseCase {
         correlationId,
         phone: message.phone,
         ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
-        payload: financeMenu,
+        payload: this.resolveFinanceMenu(context),
       });
 
       console.info("[BOT] menu_sent", {
@@ -482,7 +573,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       await this.sessions.save({
-        ticketId: String(message.ticketId),
+        ticketId: conversationId,
         provider: message.provider,
         ...(message.companyId ? { companyId: String(message.companyId) } : {}),
         ...(message.whatsappId
@@ -512,5 +603,213 @@ export class HandleIncomingMessageUseCase {
       isOpen: businessHours.isOpen,
       reason: businessHours.reason,
     });
+  }
+
+  private resolveMainMenu(context?: BotContext): ButtonMessage {
+    if (!context) {
+      return mainMenu;
+    }
+
+    const menu = MenuResolver.getMenu(context, "main");
+
+    if (!menu) {
+      throw new Error('Menu "main" não encontrado no BotContext');
+    }
+
+    return MenuToButtonMessage.convert(menu);
+  }
+
+  private resolveAfterHoursMenu(context?: BotContext): ButtonMessage {
+    if (!context) {
+      return afterHoursMenu;
+    }
+
+    const menu = MenuResolver.getMenu(context, "after_hours");
+
+    if (!menu) {
+      throw new Error('Menu "after_hours" não encontrado no BotContext');
+    }
+
+    return MenuToButtonMessage.convert(menu);
+  }
+
+  private resolveFinanceMenu(context?: BotContext): ButtonMessage {
+    if (!context) {
+      return financeMenu;
+    }
+
+    const menu = MenuResolver.getMenu(context, "finance");
+
+    if (!menu) {
+      throw new Error('Menu "finance" não encontrado no BotContext');
+    }
+
+    return MenuToButtonMessage.convert(menu);
+  }
+
+  private async executeContextButtonAction(
+    context: BotContext,
+    message: NormalizedIncomingMessage,
+    conversationId: string,
+    correlationId: string,
+    stage: string | undefined,
+    isOpen: boolean,
+    reason: string,
+  ): Promise<void> {
+    const button = MenuResolver.findButton(context, message.buttonId ?? "");
+
+    if (!button) {
+      console.info("[BOT] message_unhandled", {
+        correlationId,
+        ticketId: message.ticketId,
+        stage,
+        buttonId: message.buttonId,
+        isOpen,
+        reason,
+      });
+
+      return;
+    }
+
+    if (button.action.type === "transfer") {
+      const confirmationMessage = MenuResolver.getMessage(
+        context,
+        button.action.messageKey,
+      );
+
+      if (!confirmationMessage) {
+        throw new Error(
+          `Mensagem "${button.action.messageKey}" não encontrada no BotContext`,
+        );
+      }
+
+      await this.transfer.transfer({
+        correlationId,
+        number: message.phone,
+        queueId: button.action.queueId,
+        status: "pending",
+        message: confirmationMessage,
+      });
+
+      console.info("[BOT] ticket_transferred", {
+        correlationId,
+        ticketId: message.ticketId,
+        queueId: button.action.queueId,
+        intent: button.action.intent,
+      });
+
+      await this.sessions.save({
+        ticketId: conversationId,
+        provider: message.provider,
+        ...(message.companyId ? { companyId: String(message.companyId) } : {}),
+        ...(message.whatsappId
+          ? { whatsappId: String(message.whatsappId) }
+          : {}),
+        ...(message.contactId ? { contactId: String(message.contactId) } : {}),
+        phone: message.phone,
+        stage: "waiting_human",
+        intent: button.action.intent as Intent,
+      });
+
+      console.info("[BOT] session_saved", {
+        correlationId,
+        ticketId: message.ticketId,
+        stage: "waiting_human",
+        intent: button.action.intent,
+      });
+
+      return;
+    }
+
+    const menu = MenuResolver.getMenu(context, button.action.menuId);
+
+    if (!menu) {
+      throw new Error(
+        `Menu "${button.action.menuId}" não encontrado no BotContext`,
+      );
+    }
+
+    await this.messaging.sendButtons({
+      correlationId,
+      phone: message.phone,
+      ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
+      payload: MenuToButtonMessage.convert(menu),
+    });
+
+    console.info("[BOT] menu_sent", {
+      correlationId,
+      ticketId: message.ticketId,
+      menu: button.action.menuId,
+    });
+
+    if (button.action.menuId === "finance") {
+      await this.sessions.save({
+        ticketId: conversationId,
+        provider: message.provider,
+        ...(message.companyId ? { companyId: String(message.companyId) } : {}),
+        ...(message.whatsappId
+          ? { whatsappId: String(message.whatsappId) }
+          : {}),
+        ...(message.contactId ? { contactId: String(message.contactId) } : {}),
+        phone: message.phone,
+        stage: "awaiting_finance_menu",
+        intent: "finance",
+      });
+
+      console.info("[BOT] session_saved", {
+        correlationId,
+        ticketId: message.ticketId,
+        stage: "awaiting_finance_menu",
+        intent: "finance",
+      });
+    }
+
+    return;
+  }
+
+  private async lookupLatestQChatTicket(
+    message: NormalizedIncomingMessage,
+    context: BotContext | undefined,
+    correlationId: string,
+  ) {
+    const companyId = message.companyId ?? context?.companyId;
+    const whatsappId = message.whatsappId ?? context?.whatsappId;
+
+    try {
+      const params = {
+        phone: message.phone,
+        ...(companyId !== undefined ? { companyId } : {}),
+        ...(whatsappId !== undefined ? { whatsappId } : {}),
+      };
+
+      const latestTicket =
+        await this.qchatTicketStatusLookup.findLatestByContact(params);
+
+      console.info("[BOT] qchat_ticket_status_checked", {
+        correlationId,
+        phone: message.phone,
+        companyId,
+        whatsappId,
+        found: Boolean(latestTicket),
+        qchatTicketId: latestTicket?.ticketId,
+        qchatTicketStatus: latestTicket?.status,
+      });
+
+      return latestTicket;
+    } catch (error) {
+      console.warn("[BOT] qchat_ticket_status_lookup_failed", {
+        correlationId,
+        phone: message.phone,
+        companyId,
+        whatsappId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      return null;
+    }
+  }
+
+  private isHumanTicketOpen(status: string): boolean {
+    return ["open", "pending"].includes(status.toLowerCase());
   }
 }

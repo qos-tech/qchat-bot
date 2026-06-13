@@ -13,10 +13,12 @@ export class QChatPayloadNormalizer implements IncomingMessageNormalizer {
     const kind = this.detectKind(message);
     const media = this.extractMedia(message, kind);
     const text = this.extractText(msg, message, kind);
+    const conversationId = String(ticket?.id ?? "");
 
     return {
       provider: "qchat",
       messageId: String(msg?.key?.id ?? ""),
+      conversationId,
 
       ...(ticket?.id ? { ticketId: ticket.id } : {}),
       ...(ticket?.contactId ? { contactId: ticket.contactId } : {}),

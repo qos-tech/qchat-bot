@@ -33,6 +33,8 @@ const envSchema = z.object({
 
   EXTERNAL_API_RETRY_ATTEMPTS: z.coerce.number().default(3),
   EXTERNAL_API_RETRY_BASE_DELAY_MS: z.coerce.number().default(500),
+
+  QCHAT_DB_URL: z.string().min(1),
 });
 
 const parsed = envSchema.safeParse(process.env);

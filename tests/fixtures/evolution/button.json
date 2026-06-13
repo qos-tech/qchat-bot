@@ -1,0 +1,251 @@
+{
+    "event": "messages.upsert",
+    "instance": "4120182200",
+    "data": {
+        "key": {
+            "remoteJid": "554197035511@s.whatsapp.net",
+            "remoteJidAlt": "95661924057120@lid",
+            "fromMe": false,
+            "id": "3EB057D78E134D4EB7AEE8",
+            "participant": "",
+            "addressingMode": "pn"
+        },
+        "pushName": "Diego Ramag",
+        "message": {
+            "templateButtonReplyMessage": {
+                "selectedId": "opt_confirm",
+                "selectedDisplayText": "✅ Confirmar",
+                "contextInfo": {
+                    "mentionedJid": [],
+                    "groupMentions": [],
+                    "statusAttributions": [],
+                    "stanzaId": "3EB054CE79446A4F2EBB56",
+                    "participant": "27475627262150@lid",
+                    "quotedMessage": {
+                        "messageContextInfo": {
+                            "threadId": []
+                        },
+                        "interactiveMessage": {
+                            "body": {
+                                "text": "*Resposta Rápida*\n\nEscolha uma das opções abaixo:"
+                            },
+                            "footer": {
+                                "text": "Evolution API"
+                            },
+                            "nativeFlowMessage": {
+                                "buttons": [
+                                    {
+                                        "name": "quick_reply",
+                                        "buttonParamsJson": "{\"display_text\":\"✅ Confirmar\",\"id\":\"opt_confirm\"}"
+                                    },
+                                    {
+                                        "name": "quick_reply",
+                                        "buttonParamsJson": "{\"display_text\":\"❌ Cancelar\",\"id\":\"opt_cancel\"}"
+                                    },
+                                    {
+                                        "name": "quick_reply",
+                                        "buttonParamsJson": "{\"display_text\":\"🤔 Talvez\",\"id\":\"opt_maybe\"}"
+                                    }
+                                ],
+                                "messageParamsJson": "{\"from\":\"api\",\"templateId\":\"7cbc500c-dcd9-4832-ab10-8a7dbc6f29bb\"}",
+                                "messageVersion": 1
+                            }
+                        }
+                    },
+                    "disappearingMode": {
+                        "initiator": 0,
+                        "trigger": 1,
+                        "initiatedByMe": false
+                    }
+                },
+                "selectedIndex": 0
+            },
+            "messageContextInfo": {
+                "threadId": [],
+                "deviceListMetadata": {
+                    "senderKeyIndexes": [],
+                    "recipientKeyIndexes": [],
+                    "senderKeyHash": {
+                        "0": 93,
+                        "1": 142,
+                        "2": 105,
+                        "3": 225,
+                        "4": 136,
+                        "5": 125,
+                        "6": 199,
+                        "7": 25,
+                        "8": 252,
+                        "9": 255
+                    },
+                    "senderTimestamp": {
+                        "low": 1781120905,
+                        "high": 0,
+                        "unsigned": true
+                    },
+                    "senderAccountType": 0,
+                    "receiverAccountType": 0,
+                    "recipientKeyHash": {
+                        "0": 240,
+                        "1": 230,
+                        "2": 89,
+                        "3": 22,
+                        "4": 20,
+                        "5": 144,
+                        "6": 214,
+                        "7": 125,
+                        "8": 74,
+                        "9": 74
+                    },
+                    "recipientTimestamp": {
+                        "low": 1781028309,
+                        "high": 0,
+                        "unsigned": true
+                    }
+                },
+                "deviceListMetadataVersion": 2,
+                "messageSecret": {
+                    "0": 233,
+                    "1": 213,
+                    "2": 126,
+                    "3": 51,
+                    "4": 54,
+                    "5": 23,
+                    "6": 236,
+                    "7": 252,
+                    "8": 59,
+                    "9": 63,
+                    "10": 127,
+                    "11": 197,
+                    "12": 124,
+                    "13": 22,
+                    "14": 62,
+                    "15": 102,
+                    "16": 193,
+                    "17": 242,
+                    "18": 234,
+                    "19": 136,
+                    "20": 168,
+                    "21": 133,
+                    "22": 241,
+                    "23": 68,
+                    "24": 20,
+                    "25": 17,
+                    "26": 192,
+                    "27": 153,
+                    "28": 41,
+                    "29": 140,
+                    "30": 70,
+                    "31": 97
+                },
+                "limitSharingV2": {
+                    "sharingLimited": false,
+                    "trigger": 0,
+                    "limitSharingSettingTimestamp": {
+                        "low": 0,
+                        "high": 0,
+                        "unsigned": false
+                    },
+                    "initiatedByMe": false
+                }
+            }
+        },
+        "messageType": "templateButtonReplyMessage",
+        "messageTimestamp": 1781305768,
+        "source": "web",
+        "instanceId": "7a2351c3-57d1-4b00-94fd-8d2edce34078",
+        "status": "DELIVERY_ACK",
+        "contextInfo": {
+            "threadId": [],
+            "deviceListMetadata": {
+                "senderKeyIndexes": [],
+                "recipientKeyIndexes": [],
+                "senderKeyHash": {
+                    "0": 93,
+                    "1": 142,
+                    "2": 105,
+                    "3": 225,
+                    "4": 136,
+                    "5": 125,
+                    "6": 199,
+                    "7": 25,
+                    "8": 252,
+                    "9": 255
+                },
+                "senderTimestamp": {
+                    "low": 1781120905,
+                    "high": 0,
+                    "unsigned": true
+                },
+                "senderAccountType": 0,
+                "receiverAccountType": 0,
+                "recipientKeyHash": {
+                    "0": 240,
+                    "1": 230,
+                    "2": 89,
+                    "3": 22,
+                    "4": 20,
+                    "5": 144,
+                    "6": 214,
+                    "7": 125,
+                    "8": 74,
+                    "9": 74
+                },
+                "recipientTimestamp": {
+                    "low": 1781028309,
+                    "high": 0,
+                    "unsigned": true
+                }
+            },
+            "deviceListMetadataVersion": 2,
+            "messageSecret": {
+                "0": 233,
+                "1": 213,
+                "2": 126,
+                "3": 51,
+                "4": 54,
+                "5": 23,
+                "6": 236,
+                "7": 252,
+                "8": 59,
+                "9": 63,
+                "10": 127,
+                "11": 197,
+                "12": 124,
+                "13": 22,
+                "14": 62,
+                "15": 102,
+                "16": 193,
+                "17": 242,
+                "18": 234,
+                "19": 136,
+                "20": 168,
+                "21": 133,
+                "22": 241,
+                "23": 68,
+                "24": 20,
+                "25": 17,
+                "26": 192,
+                "27": 153,
+                "28": 41,
+                "29": 140,
+                "30": 70,
+                "31": 97
+            },
+            "limitSharingV2": {
+                "sharingLimited": false,
+                "trigger": 0,
+                "limitSharingSettingTimestamp": {
+                    "low": 0,
+                    "high": 0,
+                    "unsigned": false
+                },
+                "initiatedByMe": false
+            }
+        }
+    },
+    "destination": "https://webhook.site/ef666728-5814-4b42-b643-916c32186957",
+    "date_time": "2026-06-12T20:09:29.427Z",
+    "sender": "554120182200@s.whatsapp.net",
+    "server_url": "https://api.evolution.qosit.cloud",
+    "apikey": "FC654925C4AF-4ECE-8E49-151D631BBB3F"
+}

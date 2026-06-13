@@ -6,9 +6,19 @@ import { env } from "../../config/env.js";
 import { ExternalApiError } from "../../domain/errors/external-api-error.js";
 import { withRetry } from "../http/with-retry.js";
 
+export type QChatTicketTransferGatewayConfig = {
+  apiUrl: string;
+  apiToken: string;
+};
+
 export class QChatTicketTransferGateway implements TicketTransferGateway {
-  private readonly apiUrl = env.QCHAT_API_URL;
-  private readonly token = env.QCHAT_API_TOKEN;
+  private readonly apiUrl: string;
+  private readonly token: string;
+
+  constructor(config?: QChatTicketTransferGatewayConfig) {
+    this.apiUrl = config?.apiUrl ?? env.QCHAT_API_URL;
+    this.token = config?.apiToken ?? env.QCHAT_API_TOKEN;
+  }
 
   async transfer(params: {
     correlationId?: string;

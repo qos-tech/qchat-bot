@@ -1,0 +1,169 @@
+{
+    "event": "messages.upsert",
+    "instance": "4120182200",
+    "data": {
+        "key": {
+            "remoteJid": "554197035511@s.whatsapp.net",
+            "remoteJidAlt": "95661924057120@lid",
+            "fromMe": false,
+            "id": "3EB0F487767150DF9F581E",
+            "participant": "",
+            "addressingMode": "pn"
+        },
+        "pushName": "Diego Ramag",
+        "message": {
+            "messageContextInfo": {
+                "threadId": [],
+                "deviceListMetadata": {
+                    "senderKeyIndexes": [],
+                    "recipientKeyIndexes": [],
+                    "senderKeyHash": {
+                        "0": 93,
+                        "1": 142,
+                        "2": 105,
+                        "3": 225,
+                        "4": 136,
+                        "5": 125,
+                        "6": 199,
+                        "7": 25,
+                        "8": 252,
+                        "9": 255
+                    },
+                    "senderTimestamp": {
+                        "low": 1781120905,
+                        "high": 0,
+                        "unsigned": true
+                    },
+                    "senderAccountType": 0,
+                    "receiverAccountType": 0,
+                    "recipientKeyHash": {
+                        "0": 240,
+                        "1": 230,
+                        "2": 89,
+                        "3": 22,
+                        "4": 20,
+                        "5": 144,
+                        "6": 214,
+                        "7": 125,
+                        "8": 74,
+                        "9": 74
+                    },
+                    "recipientTimestamp": {
+                        "low": 1781028309,
+                        "high": 0,
+                        "unsigned": true
+                    }
+                },
+                "deviceListMetadataVersion": 2
+            },
+            "listResponseMessage": {
+                "title": "Coca-Cola",
+                "listType": 1,
+                "singleSelectReply": {
+                    "selectedRowId": "coca"
+                },
+                "contextInfo": {
+                    "mentionedJid": [],
+                    "groupMentions": [],
+                    "statusAttributions": [],
+                    "stanzaId": "3EB08C55CAD0FEB5EBA792",
+                    "participant": "27475627262150@lid",
+                    "quotedMessage": {
+                        "messageContextInfo": {
+                            "threadId": []
+                        },
+                        "listMessage": {
+                            "sections": [
+                                {
+                                    "rows": [
+                                        {
+                                            "title": "Coca-Cola",
+                                            "description": "Lata 350ml",
+                                            "rowId": "coca"
+                                        },
+                                        {
+                                            "title": "Suco de Laranja",
+                                            "description": "300ml natural",
+                                            "rowId": "suco"
+                                        }
+                                    ],
+                                    "title": "Bebidas"
+                                },
+                                {
+                                    "rows": [
+                                        {
+                                            "title": "X-Burger",
+                                            "description": "Pão, carne 150g, queijo",
+                                            "rowId": "xburger"
+                                        }
+                                    ],
+                                    "title": "Lanches"
+                                }
+                            ],
+                            "title": "Cardápio de Teste",
+                            "description": "Escolha um item abaixo",
+                            "buttonText": "Ver opções",
+                            "listType": 1,
+                            "footerText": "Validade hoje"
+                        }
+                    }
+                },
+                "description": "Lata 350ml"
+            }
+        },
+        "messageType": "listResponseMessage",
+        "messageTimestamp": 1781305860,
+        "source": "web",
+        "instanceId": "7a2351c3-57d1-4b00-94fd-8d2edce34078",
+        "status": "DELIVERY_ACK",
+        "contextInfo": {
+            "threadId": [],
+            "deviceListMetadata": {
+                "senderKeyIndexes": [],
+                "recipientKeyIndexes": [],
+                "senderKeyHash": {
+                    "0": 93,
+                    "1": 142,
+                    "2": 105,
+                    "3": 225,
+                    "4": 136,
+                    "5": 125,
+                    "6": 199,
+                    "7": 25,
+                    "8": 252,
+                    "9": 255
+                },
+                "senderTimestamp": {
+                    "low": 1781120905,
+                    "high": 0,
+                    "unsigned": true
+                },
+                "senderAccountType": 0,
+                "receiverAccountType": 0,
+                "recipientKeyHash": {
+                    "0": 240,
+                    "1": 230,
+                    "2": 89,
+                    "3": 22,
+                    "4": 20,
+                    "5": 144,
+                    "6": 214,
+                    "7": 125,
+                    "8": 74,
+                    "9": 74
+                },
+                "recipientTimestamp": {
+                    "low": 1781028309,
+                    "high": 0,
+                    "unsigned": true
+                }
+            },
+            "deviceListMetadataVersion": 2
+        }
+    },
+    "destination": "https://webhook.site/ef666728-5814-4b42-b643-916c32186957",
+    "date_time": "2026-06-12T20:11:00.769Z",
+    "sender": "554120182200@s.whatsapp.net",
+    "server_url": "https://api.evolution.qosit.cloud",
+    "apikey": "FC654925C4AF-4ECE-8E49-151D631BBB3F"
+}

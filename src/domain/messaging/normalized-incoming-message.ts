@@ -7,6 +7,7 @@ export type NormalizedIncomingMessage = {
   provider: Provider;
 
   messageId: string;
+  conversationId: string;
 
   ticketId?: number | string;
   contactId?: number | string;
