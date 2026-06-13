@@ -5,7 +5,7 @@ export function createCorrelationId(
 ): string {
   return [
     message.provider,
-    message.ticketId ?? "no-ticket",
+    message.conversationId ?? message.ticketId ?? "no-conversation",
     message.messageId ?? "no-message",
   ].join(":");
 }

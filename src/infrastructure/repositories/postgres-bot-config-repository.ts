@@ -55,6 +55,21 @@ export class PostgresBotConfigRepository implements BotConfigRepository {
     return result.rows[0] ? this.toDomain(result.rows[0]) : null;
   }
 
+  async findByEvolutionInstance(instance: string): Promise<BotConfig | null> {
+    const result = await db.query<BotConfigRow>(
+      `
+      SELECT *
+      FROM bot_configs
+      WHERE evolution_instance = $1
+        AND active = true
+      LIMIT 1
+      `,
+      [instance],
+    );
+
+    return result.rows[0] ? this.toDomain(result.rows[0]) : null;
+  }
+
   private toDomain(row: BotConfigRow): BotConfig {
     return {
       id: row.id,

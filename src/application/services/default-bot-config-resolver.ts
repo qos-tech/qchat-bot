@@ -28,6 +28,12 @@ export class DefaultBotConfigResolver implements BotConfigResolver {
     );
   }
 
+  async resolveByEvolutionInstance(instance: string): Promise<BotConfig | null> {
+    return this.validateResolved(
+      await this.repository.findByEvolutionInstance(instance),
+    );
+  }
+
   private validateResolved(config: BotConfig | null): BotConfig | null {
     if (!config) {
       return null;

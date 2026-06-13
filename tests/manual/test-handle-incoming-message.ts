@@ -123,6 +123,7 @@ await useCase.execute(
   {
     provider: "qchat",
     messageId: "msg-1",
+    conversationId: "15551",
     ticketId: "15551",
     companyId: "1",
     whatsappId: "122",

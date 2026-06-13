@@ -22,16 +22,17 @@ for (const file of files) {
   console.log("\n==============================");
   console.log(file);
   console.log("==============================");
-  console.log({
-    provider: result.provider,
-    kind: result.kind,
-    phone: result.phone,
-    text: result.text,
+    console.log({
+      provider: result.provider,
+      kind: result.kind,
+      conversationId: result.conversationId,
+      phone: result.phone,
+      text: result.text,
     buttonId: result.buttonId,
     buttonText: result.buttonText,
     isButtonReply: result.isButtonReply,
-    media: result.media,
-    ticketId: result.ticketId,
+      media: result.media,
+      ticketId: result.ticketId,
     companyId: result.companyId,
     whatsappId: result.whatsappId,
     status: result.status,

@@ -53,4 +53,15 @@ if (!secondBotByMessage) {
 console.log("RESOLVE SEGUNDO BOT POR MENSAGEM:");
 console.log(JSON.stringify(secondBotByMessage, null, 2));
 
+const secondBotByEvolutionInstance = await resolver.resolveByEvolutionInstance(
+  secondBotByToken.evolution.instance,
+);
+
+if (!secondBotByEvolutionInstance) {
+  throw new Error("Segundo bot não encontrado por evolution instance");
+}
+
+console.log("RESOLVE SEGUNDO BOT POR EVOLUTION INSTANCE:");
+console.log(JSON.stringify(secondBotByEvolutionInstance, null, 2));
+
 process.exit(0);

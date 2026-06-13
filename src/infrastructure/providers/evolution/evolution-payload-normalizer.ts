@@ -3,61 +3,50 @@ import type { MessageKind } from "../../../domain/messaging/message-kind.js";
 import type { NormalizedIncomingMessage } from "../../../domain/messaging/normalized-incoming-message.js";
 import type { NormalizedMedia } from "../../../domain/messaging/normalized-media.js";
 
-export class QChatPayloadNormalizer implements IncomingMessageNormalizer {
+export class EvolutionPayloadNormalizer implements IncomingMessageNormalizer {
   normalize(payload: any): NormalizedIncomingMessage {
-    const body = payload?.body ?? payload;
-    const msg = body?.msg;
-    const ticket = body?.ticket;
-    const message = msg?.message;
-
+    const data = payload?.data ?? payload;
+    const key = data?.key;
+    const message = data?.message;
+    const instance = String(payload?.instance ?? "");
+    const phone = this.extractPhone(key?.remoteJid);
     const kind = this.detectKind(message);
     const media = this.extractMedia(message, kind);
-    const text = this.extractText(msg, message, kind);
-    const conversationId = String(ticket?.id ?? "");
+    const text = this.extractText(message, kind);
+    const buttonId = this.extractButtonId(message);
+    const buttonText = this.extractButtonText(message, kind);
+    const conversationId = `${instance}:${phone}`;
 
     return {
-      provider: "qchat",
-      messageId: String(msg?.key?.id ?? ""),
+      provider: "evolution",
+      messageId: String(key?.id ?? ""),
       conversationId,
-
-      ...(ticket?.id ? { ticketId: ticket.id } : {}),
-      ...(ticket?.contactId ? { contactId: ticket.contactId } : {}),
-      ...(ticket?.companyId ? { companyId: ticket.companyId } : {}),
-      ...(ticket?.whatsappId ? { whatsappId: ticket.whatsappId } : {}),
-
-      phone: String(ticket?.contact?.number ?? msg?.key?.remoteJid ?? ""),
-      ...(ticket?.contact?.name ? { name: ticket.contact.name } : {}),
-
+      ticketId: conversationId,
+      phone,
+      ...(data?.pushName ? { name: data.pushName } : {}),
       kind,
       text,
-
-      fromMe: Boolean(msg?.key?.fromMe ?? ticket?.fromMe),
-
-      ...(message?.templateButtonReplyMessage?.selectedID
-        ? { buttonId: message.templateButtonReplyMessage.selectedID }
-        : {}),
-      ...(message?.templateButtonReplyMessage?.selectedDisplayText
-        ? { buttonText: message.templateButtonReplyMessage.selectedDisplayText }
-        : {}),
-
+      fromMe: Boolean(key?.fromMe),
+      ...(buttonId ? { buttonId } : {}),
+      ...(buttonText ? { buttonText } : {}),
       isButtonReply: kind === "button",
-
       ...(media ? { media } : {}),
-
-      ...(ticket?.status ? { status: ticket.status } : {}),
-      ...(ticket?.queueId !== undefined ? { queueId: ticket.queueId } : {}),
-      ...(ticket?.userId !== undefined ? { userId: ticket.userId } : {}),
-
-      ...(msg?.messageTimestamp
-        ? { timestamp: new Date(Number(msg.messageTimestamp) * 1000) }
+      ...(data?.messageTimestamp
+        ? { timestamp: new Date(Number(data.messageTimestamp) * 1000) }
         : {}),
-
       raw: payload,
     };
   }
 
+  private extractPhone(remoteJid: unknown): string {
+    const value = String(remoteJid ?? "");
+    return value.split("@")[0] ?? "";
+  }
+
   private detectKind(message: any): MessageKind {
-    if (message?.templateButtonReplyMessage) return "button";
+    if (message?.templateButtonReplyMessage || message?.listResponseMessage) {
+      return "button";
+    }
     if (message?.imageMessage) return "image";
     if (message?.audioMessage) return "audio";
     if (message?.videoMessage) return "video";
@@ -75,9 +64,14 @@ export class QChatPayloadNormalizer implements IncomingMessageNormalizer {
     return "unknown";
   }
 
-  private extractText(msg: any, message: any, kind: MessageKind): string {
+  private extractText(message: any, kind: MessageKind): string {
     if (kind === "button") {
-      return message?.templateButtonReplyMessage?.selectedDisplayText || "";
+      return (
+        message?.templateButtonReplyMessage?.selectedDisplayText ||
+        message?.listResponseMessage?.title ||
+        message?.listResponseMessage?.description ||
+        ""
+      );
     }
 
     if (kind === "image") {
@@ -93,15 +87,31 @@ export class QChatPayloadNormalizer implements IncomingMessageNormalizer {
     }
 
     if (kind === "text") {
-      return (
-        message?.conversation ||
-        message?.extendedTextMessage?.text ||
-        msg?.body ||
-        ""
-      );
+      return message?.conversation || message?.extendedTextMessage?.text || "";
     }
 
     return "";
+  }
+
+  private extractButtonId(message: any): string | null {
+    return (
+      message?.templateButtonReplyMessage?.selectedId ||
+      message?.templateButtonReplyMessage?.selectedID ||
+      message?.listResponseMessage?.singleSelectReply?.selectedRowId ||
+      null
+    );
+  }
+
+  private extractButtonText(message: any, kind: MessageKind): string | null {
+    if (kind !== "button") {
+      return null;
+    }
+
+    return (
+      message?.templateButtonReplyMessage?.selectedDisplayText ||
+      message?.listResponseMessage?.title ||
+      null
+    );
   }
 
   private extractMedia(
@@ -119,6 +129,11 @@ export class QChatPayloadNormalizer implements IncomingMessageNormalizer {
 
     if (!media) return null;
 
+    const size =
+      typeof media.fileLength === "number"
+        ? media.fileLength
+        : media.fileLength?.low;
+
     return {
       ...(media.mimetype ? { mimeType: media.mimetype } : {}),
       ...(media.fileName ? { fileName: media.fileName } : {}),
@@ -126,7 +141,7 @@ export class QChatPayloadNormalizer implements IncomingMessageNormalizer {
       ...(media.URL ? { url: media.URL } : {}),
       ...(media.url ? { url: media.url } : {}),
       ...(media.caption ? { caption: media.caption } : {}),
-      ...(media.fileLength ? { size: Number(media.fileLength) } : {}),
+      ...(size !== undefined ? { size: Number(size) } : {}),
       ...(media.seconds ? { durationSeconds: Number(media.seconds) } : {}),
       ...(media.pageCount ? { pageCount: Number(media.pageCount) } : {}),
     };

@@ -34,9 +34,11 @@ export class HandleIncomingMessageUseCase {
     context?: BotContext,
   ): Promise<void> {
     const correlationId = createCorrelationId(message);
+    const conversationId = message.conversationId;
 
     console.info("[BOT] message_received", {
       correlationId,
+      conversationId,
       ticketId: message.ticketId,
       phone: message.phone,
       kind: message.kind,
@@ -50,6 +52,7 @@ export class HandleIncomingMessageUseCase {
       console.info("[BOT] message_ignored", {
         correlationId,
         reason: "from_me",
+        conversationId,
         ticketId: message.ticketId,
       });
 
@@ -57,11 +60,12 @@ export class HandleIncomingMessageUseCase {
     }
 
     if (message.status === "closed") {
-      await this.sessions.deleteByTicketId(String(message.ticketId));
+      await this.sessions.deleteByTicketId(conversationId);
 
       console.info("[BOT] session_deleted", {
         correlationId,
         reason: "ticket_closed",
+        conversationId,
         ticketId: message.ticketId,
       });
 
@@ -72,6 +76,7 @@ export class HandleIncomingMessageUseCase {
       console.info("[BOT] message_ignored", {
         correlationId,
         reason: "already_assigned",
+        conversationId,
         ticketId: message.ticketId,
         userId: message.userId,
       });
@@ -85,6 +90,7 @@ export class HandleIncomingMessageUseCase {
       console.info("[BOT] message_ignored", {
         correlationId,
         reason: "not_triage_queue",
+        conversationId,
         ticketId: message.ticketId,
         queueId: message.queueId,
         triageQueueId,
@@ -93,10 +99,11 @@ export class HandleIncomingMessageUseCase {
       return;
     }
 
-    let session = await this.sessions.findByTicketId(String(message.ticketId));
+    let session = await this.sessions.findByTicketId(conversationId);
 
     console.info("[BOT] session_checked", {
       correlationId,
+      conversationId,
       ticketId: message.ticketId,
       exists: Boolean(session),
       stage: session?.stage,
@@ -104,11 +111,12 @@ export class HandleIncomingMessageUseCase {
     });
 
     if (session?.stage === "waiting_human") {
-      await this.sessions.deleteByTicketId(String(message.ticketId));
+      await this.sessions.deleteByTicketId(conversationId);
 
       console.info("[BOT] session_deleted", {
         correlationId,
         reason: "stale_waiting_human_session",
+        conversationId,
         ticketId: message.ticketId,
         queueId: message.queueId,
         userId: message.userId,
@@ -123,6 +131,7 @@ export class HandleIncomingMessageUseCase {
 
     console.info("[BOT] business_hours_checked", {
       correlationId,
+      conversationId,
       ticketId: message.ticketId,
       isOpen: businessHours.isOpen,
       reason: businessHours.reason,
@@ -138,12 +147,13 @@ export class HandleIncomingMessageUseCase {
 
       console.info("[BOT] menu_sent", {
         correlationId,
+        conversationId,
         ticketId: message.ticketId,
         menu: "main",
       });
 
       await this.sessions.save({
-        ticketId: String(message.ticketId),
+        ticketId: conversationId,
         provider: message.provider,
         ...(message.companyId ? { companyId: String(message.companyId) } : {}),
         ...(message.whatsappId
@@ -156,6 +166,7 @@ export class HandleIncomingMessageUseCase {
 
       console.info("[BOT] session_saved", {
         correlationId,
+        conversationId,
         ticketId: message.ticketId,
         stage: "awaiting_main_menu",
       });
@@ -177,6 +188,7 @@ export class HandleIncomingMessageUseCase {
 
       console.info("[BOT] menu_sent", {
         correlationId,
+        conversationId,
         ticketId: message.ticketId,
         menu: "main",
         reason: "loop",
@@ -195,12 +207,13 @@ export class HandleIncomingMessageUseCase {
 
       console.info("[BOT] menu_sent", {
         correlationId,
+        conversationId,
         ticketId: message.ticketId,
         menu: "after_hours",
       });
 
       await this.sessions.save({
-        ticketId: String(message.ticketId),
+        ticketId: conversationId,
         provider: message.provider,
         ...(message.companyId ? { companyId: String(message.companyId) } : {}),
         ...(message.whatsappId
@@ -213,6 +226,7 @@ export class HandleIncomingMessageUseCase {
 
       console.info("[BOT] session_saved", {
         correlationId,
+        conversationId,
         ticketId: message.ticketId,
         stage: "awaiting_main_menu",
         mode: "after_hours",
@@ -235,6 +249,7 @@ export class HandleIncomingMessageUseCase {
 
       console.info("[BOT] menu_sent", {
         correlationId,
+        conversationId,
         ticketId: message.ticketId,
         menu: "after_hours",
         reason: "loop",
@@ -248,6 +263,7 @@ export class HandleIncomingMessageUseCase {
         await this.executeContextButtonAction(
           context,
           message,
+          conversationId,
           correlationId,
           session?.stage,
           businessHours.isOpen,
@@ -287,7 +303,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       await this.sessions.save({
-        ticketId: String(message.ticketId),
+        ticketId: conversationId,
         provider: message.provider,
         ...(message.companyId ? { companyId: String(message.companyId) } : {}),
         ...(message.whatsappId
@@ -328,7 +344,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       await this.sessions.save({
-        ticketId: String(message.ticketId),
+        ticketId: conversationId,
         provider: message.provider,
         ...(message.companyId ? { companyId: String(message.companyId) } : {}),
         ...(message.whatsappId
@@ -368,7 +384,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       await this.sessions.save({
-        ticketId: String(message.ticketId),
+        ticketId: conversationId,
         provider: message.provider,
         ...(message.companyId ? { companyId: String(message.companyId) } : {}),
         ...(message.whatsappId
@@ -407,7 +423,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       await this.sessions.save({
-        ticketId: String(message.ticketId),
+        ticketId: conversationId,
         provider: message.provider,
         ...(message.companyId ? { companyId: String(message.companyId) } : {}),
         ...(message.whatsappId
@@ -444,7 +460,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       await this.sessions.save({
-        ticketId: String(message.ticketId),
+        ticketId: conversationId,
         provider: message.provider,
         ...(message.companyId ? { companyId: String(message.companyId) } : {}),
         ...(message.whatsappId
@@ -518,7 +534,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       await this.sessions.save({
-        ticketId: String(message.ticketId),
+        ticketId: conversationId,
         provider: message.provider,
         ...(message.companyId ? { companyId: String(message.companyId) } : {}),
         ...(message.whatsappId
@@ -595,6 +611,7 @@ export class HandleIncomingMessageUseCase {
   private async executeContextButtonAction(
     context: BotContext,
     message: NormalizedIncomingMessage,
+    conversationId: string,
     correlationId: string,
     stage: string | undefined,
     isOpen: boolean,
@@ -643,7 +660,7 @@ export class HandleIncomingMessageUseCase {
       });
 
       await this.sessions.save({
-        ticketId: String(message.ticketId),
+        ticketId: conversationId,
         provider: message.provider,
         ...(message.companyId ? { companyId: String(message.companyId) } : {}),
         ...(message.whatsappId
@@ -688,7 +705,7 @@ export class HandleIncomingMessageUseCase {
 
     if (button.action.menuId === "finance") {
       await this.sessions.save({
-        ticketId: String(message.ticketId),
+        ticketId: conversationId,
         provider: message.provider,
         ...(message.companyId ? { companyId: String(message.companyId) } : {}),
         ...(message.whatsappId

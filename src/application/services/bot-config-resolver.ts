@@ -7,4 +7,6 @@ export interface BotConfigResolver {
     companyId?: number;
     whatsappId?: number;
   }): Promise<BotConfig | null>;
+
+  resolveByEvolutionInstance(instance: string): Promise<BotConfig | null>;
 }

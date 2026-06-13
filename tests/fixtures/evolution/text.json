@@ -1,0 +1,204 @@
+{
+    "event": "messages.upsert",
+    "instance": "4120182200",
+    "data": {
+        "key": {
+            "remoteJid": "554197035511@s.whatsapp.net",
+            "remoteJidAlt": "95661924057120@lid",
+            "fromMe": false,
+            "id": "3EB0D3C7BF2AD7109F0CFC",
+            "participant": "",
+            "addressingMode": "pn"
+        },
+        "pushName": "Diego Ramag",
+        "message": {
+            "conversation": "Olá",
+            "messageContextInfo": {
+                "threadId": [],
+                "deviceListMetadata": {
+                    "senderKeyIndexes": [],
+                    "recipientKeyIndexes": [],
+                    "senderKeyHash": {
+                        "0": 93,
+                        "1": 142,
+                        "2": 105,
+                        "3": 225,
+                        "4": 136,
+                        "5": 125,
+                        "6": 199,
+                        "7": 25,
+                        "8": 252,
+                        "9": 255
+                    },
+                    "senderTimestamp": {
+                        "low": 1781120905,
+                        "high": 0,
+                        "unsigned": true
+                    },
+                    "senderAccountType": 0,
+                    "receiverAccountType": 0,
+                    "recipientKeyHash": {
+                        "0": 240,
+                        "1": 230,
+                        "2": 89,
+                        "3": 22,
+                        "4": 20,
+                        "5": 144,
+                        "6": 214,
+                        "7": 125,
+                        "8": 74,
+                        "9": 74
+                    },
+                    "recipientTimestamp": {
+                        "low": 1781028309,
+                        "high": 0,
+                        "unsigned": true
+                    }
+                },
+                "deviceListMetadataVersion": 2,
+                "messageSecret": {
+                    "0": 227,
+                    "1": 24,
+                    "2": 188,
+                    "3": 79,
+                    "4": 233,
+                    "5": 236,
+                    "6": 227,
+                    "7": 164,
+                    "8": 201,
+                    "9": 189,
+                    "10": 117,
+                    "11": 97,
+                    "12": 250,
+                    "13": 173,
+                    "14": 89,
+                    "15": 28,
+                    "16": 37,
+                    "17": 64,
+                    "18": 189,
+                    "19": 239,
+                    "20": 57,
+                    "21": 214,
+                    "22": 100,
+                    "23": 146,
+                    "24": 246,
+                    "25": 155,
+                    "26": 61,
+                    "27": 231,
+                    "28": 222,
+                    "29": 131,
+                    "30": 125,
+                    "31": 238
+                },
+                "limitSharingV2": {
+                    "sharingLimited": false,
+                    "trigger": 0,
+                    "limitSharingSettingTimestamp": {
+                        "low": 0,
+                        "high": 0,
+                        "unsigned": false
+                    },
+                    "initiatedByMe": false
+                }
+            }
+        },
+        "messageType": "conversation",
+        "messageTimestamp": 1781305687,
+        "source": "web",
+        "instanceId": "7a2351c3-57d1-4b00-94fd-8d2edce34078",
+        "status": "DELIVERY_ACK",
+        "contextInfo": {
+            "threadId": [],
+            "deviceListMetadata": {
+                "senderKeyIndexes": [],
+                "recipientKeyIndexes": [],
+                "senderKeyHash": {
+                    "0": 93,
+                    "1": 142,
+                    "2": 105,
+                    "3": 225,
+                    "4": 136,
+                    "5": 125,
+                    "6": 199,
+                    "7": 25,
+                    "8": 252,
+                    "9": 255
+                },
+                "senderTimestamp": {
+                    "low": 1781120905,
+                    "high": 0,
+                    "unsigned": true
+                },
+                "senderAccountType": 0,
+                "receiverAccountType": 0,
+                "recipientKeyHash": {
+                    "0": 240,
+                    "1": 230,
+                    "2": 89,
+                    "3": 22,
+                    "4": 20,
+                    "5": 144,
+                    "6": 214,
+                    "7": 125,
+                    "8": 74,
+                    "9": 74
+                },
+                "recipientTimestamp": {
+                    "low": 1781028309,
+                    "high": 0,
+                    "unsigned": true
+                }
+            },
+            "deviceListMetadataVersion": 2,
+            "messageSecret": {
+                "0": 227,
+                "1": 24,
+                "2": 188,
+                "3": 79,
+                "4": 233,
+                "5": 236,
+                "6": 227,
+                "7": 164,
+                "8": 201,
+                "9": 189,
+                "10": 117,
+                "11": 97,
+                "12": 250,
+                "13": 173,
+                "14": 89,
+                "15": 28,
+                "16": 37,
+                "17": 64,
+                "18": 189,
+                "19": 239,
+                "20": 57,
+                "21": 214,
+                "22": 100,
+                "23": 146,
+                "24": 246,
+                "25": 155,
+                "26": 61,
+                "27": 231,
+                "28": 222,
+                "29": 131,
+                "30": 125,
+                "31": 238
+            },
+            "limitSharingV2": {
+                "sharingLimited": false,
+                "trigger": 0,
+                "limitSharingSettingTimestamp": {
+                    "low": 0,
+                    "high": 0,
+                    "unsigned": false
+                },
+                "initiatedByMe": false
+            }
+        }
+    },
+    "destination": "https://webhook.site/ef666728-5814-4b42-b643-916c32186957",
+    "date_time": "2026-06-12T20:08:08.188Z",
+    "sender": "554120182200@s.whatsapp.net",
+    "server_url": "https://api.evolution.qosit.cloud",
+    "apikey": "FC654925C4AF-4ECE-8E49-151D631BBB3F"
+}
