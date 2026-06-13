@@ -86,7 +86,10 @@ export class HandleIncomingMessageUseCase {
 
     const triageQueueId = context?.triageQueueId ?? this.queues.triageQueueId;
 
-    if (String(message.queueId) !== triageQueueId) {
+    if (
+      message.provider === "qchat" &&
+      String(message.queueId) !== triageQueueId
+    ) {
       console.info("[BOT] message_ignored", {
         correlationId,
         reason: "not_triage_queue",

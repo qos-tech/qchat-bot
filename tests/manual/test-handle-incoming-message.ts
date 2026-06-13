@@ -147,4 +147,68 @@ if (!transferCalled) {
   throw new Error("Fluxo dinâmico não usou context.triageQueueId");
 }
 
+let evolutionMenuSent = false;
+
+const evolutionSessions = {
+  async findByTicketId(ticketId: string) {
+    console.log("Buscou sessão Evolution:", ticketId);
+
+    return null;
+  },
+
+  async save(session: unknown) {
+    console.log("SESSÃO EVOLUTION SALVA:");
+    console.log(session);
+  },
+
+  async deleteByTicketId() {},
+};
+
+const evolutionMessaging = {
+  async sendText(params: unknown) {
+    console.log("TEXTO EVOLUTION ENVIADO:");
+    console.log(params);
+  },
+
+  async sendButtons(params: any) {
+    evolutionMenuSent = true;
+    console.log("MENU EVOLUTION ENVIADO:");
+    console.log(JSON.stringify(params.payload, null, 2));
+  },
+};
+
+const evolutionUseCase = new HandleIncomingMessageUseCase(
+  evolutionSessions,
+  evolutionMessaging,
+  transfer,
+  businessHours,
+  {
+    triageQueueId: "legacy-triage",
+    supportQueueId: "1",
+    financeQueueId: "3",
+    otherQueueId: "2",
+  },
+);
+
+await evolutionUseCase.execute(
+  {
+    provider: "evolution",
+    messageId: "msg-evolution-1",
+    conversationId: "4120182200:554197035511",
+    ticketId: "4120182200:554197035511",
+    phone: "554197035511",
+    kind: "text",
+    text: "Olá",
+    fromMe: false,
+    isButtonReply: false,
+    status: "pending",
+    raw: {},
+  },
+  botContext,
+);
+
+if (!evolutionMenuSent) {
+  throw new Error("Mensagem Evolution sem queueId não deveria ser bloqueada");
+}
+
 process.exit(0);
