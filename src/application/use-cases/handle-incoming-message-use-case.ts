@@ -776,21 +776,11 @@ export class HandleIncomingMessageUseCase {
     const whatsappId = message.whatsappId ?? context?.whatsappId;
 
     try {
-      const params: {
-        phone: string;
-        companyId?: string | number;
-        whatsappId?: string | number;
-      } = {
+      const params = {
         phone: message.phone,
+        ...(companyId !== undefined ? { companyId } : {}),
+        ...(whatsappId !== undefined ? { whatsappId } : {}),
       };
-
-      if (companyId !== undefined) {
-        params.companyId = companyId;
-      }
-
-      if (whatsappId !== undefined) {
-        params.whatsappId = whatsappId;
-      }
 
       const latestTicket =
         await this.qchatTicketStatusLookup.findLatestByContact(params);
