@@ -123,7 +123,29 @@ export class HandleIncomingMessageUseCase {
           correlationId,
         );
 
-        if (latestTicket && this.isHumanTicketOpen(latestTicket.status)) {
+        if (!latestTicket) {
+          console.info("[BOT] message_ignored", {
+            correlationId,
+            reason: "human_ticket_not_found",
+            conversationId,
+            ticketId: message.ticketId,
+          });
+
+          return;
+        }
+
+        const normalizedStatus = latestTicket.status.toLowerCase();
+        const normalizedQueueId =
+          latestTicket.queueId !== undefined && latestTicket.queueId !== null
+            ? String(latestTicket.queueId)
+            : null;
+        const normalizedUserId =
+          latestTicket.userId !== undefined && latestTicket.userId !== null
+            ? String(latestTicket.userId)
+            : null;
+        const triageQueueId = context?.triageQueueId ?? this.queues.triageQueueId;
+
+        if (normalizedStatus === "open") {
           console.info("[BOT] message_ignored", {
             correlationId,
             reason: "human_ticket_still_open",
@@ -131,23 +153,89 @@ export class HandleIncomingMessageUseCase {
             ticketId: message.ticketId,
             qchatTicketId: latestTicket.ticketId,
             qchatTicketStatus: latestTicket.status,
+            qchatTicketUserId: normalizedUserId,
+            qchatTicketQueueId: normalizedQueueId,
           });
 
           return;
         }
 
-        await this.sessions.deleteByTicketId(conversationId);
+        if (normalizedStatus === "pending") {
+          if (normalizedUserId) {
+            console.info("[BOT] message_ignored", {
+              correlationId,
+              reason: "human_ticket_still_open",
+              conversationId,
+              ticketId: message.ticketId,
+              qchatTicketId: latestTicket.ticketId,
+              qchatTicketStatus: latestTicket.status,
+              qchatTicketUserId: normalizedUserId,
+              qchatTicketQueueId: normalizedQueueId,
+            });
 
-        console.info("[BOT] session_deleted", {
-          correlationId,
-          reason: "human_ticket_closed_in_qchat",
-          conversationId,
-          ticketId: message.ticketId,
-          qchatTicketId: latestTicket?.ticketId,
-          qchatTicketStatus: latestTicket?.status,
-        });
+            return;
+          }
 
-        session = null;
+          if (normalizedQueueId === triageQueueId) {
+            await this.sessions.deleteByTicketId(conversationId);
+
+            console.info("[BOT] session_deleted", {
+              correlationId,
+              reason: "human_ticket_pending_in_triage",
+              conversationId,
+              ticketId: message.ticketId,
+              qchatTicketId: latestTicket.ticketId,
+              qchatTicketStatus: latestTicket.status,
+              qchatTicketUserId: normalizedUserId,
+              qchatTicketQueueId: normalizedQueueId,
+              triageQueueId,
+            });
+
+            session = null;
+          } else {
+            console.info("[BOT] message_ignored", {
+              correlationId,
+              reason: "human_ticket_pending_outside_triage",
+              conversationId,
+              ticketId: message.ticketId,
+              qchatTicketId: latestTicket.ticketId,
+              qchatTicketStatus: latestTicket.status,
+              qchatTicketUserId: normalizedUserId,
+              qchatTicketQueueId: normalizedQueueId,
+              triageQueueId,
+            });
+
+            return;
+          }
+        } else if (normalizedStatus === "closed") {
+          await this.sessions.deleteByTicketId(conversationId);
+
+          console.info("[BOT] session_deleted", {
+            correlationId,
+            reason: "human_ticket_closed",
+            conversationId,
+            ticketId: message.ticketId,
+            qchatTicketId: latestTicket.ticketId,
+            qchatTicketStatus: latestTicket.status,
+            qchatTicketUserId: normalizedUserId,
+            qchatTicketQueueId: normalizedQueueId,
+          });
+
+          session = null;
+        } else {
+          console.info("[BOT] message_ignored", {
+            correlationId,
+            reason: "human_ticket_still_open",
+            conversationId,
+            ticketId: message.ticketId,
+            qchatTicketId: latestTicket.ticketId,
+            qchatTicketStatus: latestTicket.status,
+            qchatTicketUserId: normalizedUserId,
+            qchatTicketQueueId: normalizedQueueId,
+          });
+
+          return;
+        }
       } else {
         await this.sessions.deleteByTicketId(conversationId);
 
@@ -807,9 +895,5 @@ export class HandleIncomingMessageUseCase {
 
       return null;
     }
-  }
-
-  private isHumanTicketOpen(status: string): boolean {
-    return ["open", "pending"].includes(status.toLowerCase());
   }
 }

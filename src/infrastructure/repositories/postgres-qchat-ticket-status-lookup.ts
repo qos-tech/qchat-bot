@@ -7,6 +7,8 @@ import { qchatDb } from "../database/qchat-db.js";
 type TicketRow = {
   id: number;
   status: string;
+  userId: number | null;
+  queueId: number | null;
   contactId: number | null;
   companyId: number | null;
   whatsappId: number | null;
@@ -25,6 +27,8 @@ export class PostgresQChatTicketStatusLookup
       SELECT
         t."id",
         t."status",
+        t."userId",
+        t."queueId",
         t."contactId",
         t."companyId",
         t."whatsappId"
@@ -53,6 +57,8 @@ export class PostgresQChatTicketStatusLookup
     return {
       ticketId: String(row.id),
       status: row.status,
+      ...(row.userId !== null ? { userId: String(row.userId) } : {}),
+      ...(row.queueId !== null ? { queueId: String(row.queueId) } : {}),
       ...(row.contactId !== null ? { contactId: String(row.contactId) } : {}),
       ...(row.companyId !== null ? { companyId: String(row.companyId) } : {}),
       ...(row.whatsappId !== null
