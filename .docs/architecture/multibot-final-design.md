@@ -1,274 +1,305 @@
-# Multibot Final Design v1.1
+# Multibot Final Design v1.2
 
-Este documento descreve o desenho atual da arquitetura multibot do QChat Bot na
-v1.1. Ele cobre o fluxo dinamico, o fluxo legado, as responsabilidades das
-camadas e os pontos de extensao para novos bots e integracoes.
+Este documento descreve a arquitetura multibot atual do QChat Bot na v1.2. Ele
+cobre a entrada agnostica por provider, o webhook Evolution, o fluxo dinamico
+por `BotConfig`, o fluxo legado e as regras de retomada do atendimento.
 
-## Visao Geral
+## Visao geral
 
-A v1.1 permite que a mesma aplicacao atenda mais de um bot. Cada bot e descrito
-por um `BotConfig` persistido no banco de dados. A rota dinamica resolve esse
-registro pelo `webhookToken`, cria gateways com as credenciais daquele bot e
-executa o fluxo com um `BotContext` derivado do `BotConfig`.
+A aplicacao atende varios bots na mesma base. Cada bot e descrito por um
+`BotConfig` persistido no banco. A resolucao do bot acontece por:
 
-O `webhookToken` e uma credencial operacional. Em producao ele deve ser um valor
-nao previsivel, gerado por UUID, e nao deve aparecer completo em logs ou tickets.
-Operacionalmente, a aplicacao oferece scripts para listar bots com token
-mascarado, exibir detalhes de um bot especifico e regenerar tokens sem SQL
-manual.
+- `webhookToken` no fluxo dinamico do QChat
+- `instance` no webhook Evolution
+- `companyId` e `whatsappId` no resolver de contexto e no lookup do QChat
 
-Existem dois modos de operacao:
+O `BotConfig` e convertido em `BotContext`, que e a visao operacional usada no
+use case. O `BotContext` carrega somente o que o fluxo de atendimento precisa:
+filas de triagem, menus e mensagens.
 
-- Fluxo legado: `/webhook/qchat`, sem `BotContext`, usando configuracoes de ENV.
-- Fluxo dinamico: `/webhook/qchat/:webhookToken`, com `BotContext`, usando
-  configuracoes de banco.
+O `webhookToken` continua sendo uma credencial operacional. Em producao ele deve
+ser um valor nao previsivel e precisa ser mascarado em logs e ferramentas
+operacionais.
 
-A compatibilidade do fluxo legado e intencional. Ela permite manter o bot antigo
-ativo enquanto novos bots passam a ser criados por configuracao.
+## Modos de operacao
 
-## Fluxo da Rota Dinamica
+Existem dois modos principais:
 
-A rota dinamica e:
+- Fluxo legado: `POST /webhook/qchat`
+- Fluxo dinamico QChat: `POST /webhook/qchat/:webhookToken`
+- Fluxo Evolution: `POST /webhook/evolution`
+
+O fluxo legado preserva o comportamento historico baseado em ENV. O fluxo
+dinamico usa configuracao por bot. O fluxo Evolution permite entrada
+agnostica por provider.
+
+## Fluxo Evolution
+
+```text
+POST /webhook/evolution
+      │
+      ▼
+messages.upsert
+      │
+      ▼
+EvolutionPayloadNormalizer
+      │
+      ▼
+DefaultBotConfigResolver.resolveByMessage({ companyId, whatsappId })
+      │
+      ▼
+BotContextMapper.fromConfig(botConfig)
+      │
+      ▼
+HandleIncomingMessageUseCase.execute(normalizedMessage, context)
+```
+
+Pontos principais:
+
+1. A rota aceita apenas eventos `messages.upsert`.
+2. O bot e resolvido pela instance Evolution associada ao `BotConfig`.
+3. O normalizador gera `NormalizedIncomingMessage` com `conversationId`.
+4. O `conversationId` vira a chave principal de correlacao e sessao quando
+   existe.
+5. O use case recebe `BotContext` e executa o mesmo fluxo de atendimento do
+   QChat dinamico.
+
+## Fluxo QChat dinamico
 
 ```text
 POST /webhook/qchat/:webhookToken
+      │
+      ▼
+QChatPayloadNormalizer
+      │
+      ▼
+DefaultBotConfigResolver.resolveByWebhookToken(webhookToken)
+      │
+      ▼
+BotContextMapper.fromConfig(botConfig)
+      │
+      ▼
+HandleIncomingMessageUseCase.execute(normalizedMessage, context)
 ```
 
-Fluxo atual:
+O fluxo dinamico monta gateways com config explicita:
 
-1. O Fastify recebe o payload QChat.
-2. A rota extrai `webhookToken` de `request.params` e usa o valor completo
-   apenas para resolver o bot.
-3. `DefaultBotConfigResolver.resolveByWebhookToken(webhookToken)` busca um
-   `BotConfig` ativo em `bot_configs`.
-4. Se nao encontrar bot, a rota responde `404`.
-5. `QChatPayloadNormalizer` normaliza o payload recebido.
-6. `BotContextMapper.fromConfig(botConfig)` cria o `BotContext`.
-7. A rota cria um `HandleIncomingMessageUseCase` dinamico com:
-   - `EvolutionMessagingGateway(botConfig.evolution)`
-   - `QChatTicketTransferGateway(botConfig.qchat)`
-   - repositorio de sessoes Postgres
-   - servico de horario comercial
-   - `queueConfig` legado ainda injetado como fallback
-8. O use case executa `execute(normalizedMessage, context)`.
+- `EvolutionMessagingGateway(botConfig.evolution)`
+- `QChatTicketTransferGateway(botConfig.qchat)`
 
-Quando `context` existe:
+Sem config, os gateways mantem fallback por ENV para preservar o fluxo legado.
 
-- A validacao de fila de triagem usa `context.triageQueueId`.
-- Os menus enviados saem de `context.menus`.
-- As mensagens de confirmacao saem de `context.messages`.
-- As transferencias configuraveis usam os `queueId` definidos nos botoes dos
-  menus do bot.
-- O envio de menu usa a Evolution instance do bot.
-- A transferencia usa URL/token QChat do bot.
+## Fluxo QChat legado
 
-## Fluxo da Rota Legada
-
-A rota legada e:
+O webhook legado continua em:
 
 ```text
 POST /webhook/qchat
 ```
 
-Fluxo atual:
+Neste modo:
 
-1. O Fastify recebe o payload QChat.
-2. `QChatPayloadNormalizer` normaliza o payload.
-3. A rota usa o use case criado por `createHandleIncomingMessageUseCase()`.
-4. Esse bootstrap cria gateways sem config explicita:
-   - `new EvolutionMessagingGateway()`
-   - `new QChatTicketTransferGateway()`
-5. Sem config explicita, os gateways usam variaveis de ambiente:
-   - `EVOLUTION_API_URL`
-   - `EVOLUTION_API_KEY`
-   - `EVOLUTION_INSTANCE`
-   - `QCHAT_API_URL`
-   - `QCHAT_API_TOKEN`
-6. O use case executa `execute(normalizedMessage)` sem `BotContext`.
+- O `QChatPayloadNormalizer` normaliza a entrada.
+- O use case e criado sem `BotContext`.
+- Os gateways usam `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`,
+  `EVOLUTION_INSTANCE`, `QCHAT_API_URL` e `QCHAT_API_TOKEN`.
+- As filas, menus e mensagens vem do legado estatico.
 
-Quando `context` nao existe:
-
-- A fila de triagem vem de `this.queues.triageQueueId`.
-- As filas de transferencia vem de `this.queues`.
-- Os menus vem dos arquivos estaticos de `application/menus`.
-- As mensagens vem dos arquivos estaticos de `application/messages`.
-
-Esse comportamento e o fallback legado e nao deve ser removido sem uma migracao
+Esse comportamento e intencional e nao deve ser removido sem migracao
 planejada do bot antigo.
 
-## Responsabilidades por Camada
+## Normalizacao agnostica
+
+A camada de entrada foi separada por provider:
+
+- `QChatPayloadNormalizer`
+- `EvolutionPayloadNormalizer`
+
+Ambos produzem `NormalizedIncomingMessage`. O formato comum inclui:
+
+- `provider`
+- `from`
+- `body`
+- `messageType`
+- `conversationId`
+- `ticketId`
+- `queueId` quando existir
+- `buttonId` quando a mensagem vier de acao interativa
+
+O use case nao depende do provider de origem. Ele trabalha com a mensagem
+normalizada e com o contexto de bot, quando existe.
+
+## Regras de fila e retomada
+
+### Triagem
+
+Quando existe `BotContext`, a validacao da fila de triagem usa
+`context.triageQueueId`. Quando nao existe contexto, o fallback legado continua
+usando `this.queues.triageQueueId`.
+
+### Provider Evolution
+
+Mensagens do Evolution nao sao bloqueadas por ausencia de `queueId`. A decisao
+de triagem e contextual e nao depende de fila vinda na entrada.
+
+### Provider QChat
+
+O fluxo QChat mantem a validacao atual de triagem por fila quando aplicavel.
+
+### waiting_human
+
+Quando o bot recebe uma entrada em `waiting_human`, o use case consulta o
+status do ticket no banco QChat usando o contexto do bot:
+
+- `companyId`
+- `whatsappId`
+- telefone de origem
+
+Regras:
+
+- Ticket `open` ou `pending` com atendente ativo: a mensagem e ignorada e a
+  sessao continua.
+- Ticket fechado ou inexistente: a sessao e removida e o bot retoma o fluxo.
+- Ticket `pending` com `userId` vazio e `queueId` da triagem: o bot retoma o
+  fluxo.
+- Ticket `pending` fora da triagem ou com `userId` preenchido: a mensagem e
+  ignorada.
+
+Essa regra evita que o bot reabra conversas que ainda estao em atendimento
+humano e permite retomada quando o atendimento encerra.
+
+## Resolucao de menu
+
+Quando existe `BotContext`, o menu ativo depende do horario e do estado do
+fluxo:
+
+- `main`: horario comercial
+- `after_hours`: fora do horario
+- `finance`: submenu financeiro
+
+O `DefaultBusinessHoursService` pode ser forcado por
+`BUSINESS_HOURS_OVERRIDE` para `business_hours` ou `after_closing`. Isso e usado
+em validacao e suporte operacional.
+
+Resumo do comportamento:
+
+- `awaiting_main_menu` usa `main` em horario comercial.
+- `awaiting_main_menu` usa `after_hours` fora do horario.
+- `awaiting_finance_menu` continua usando `finance`.
+
+## Responsabilidades por camada
 
 ### Domain
 
-A camada `domain` define contratos e tipos centrais. Ela nao importa
-`infrastructure`.
+Define contratos e tipos centrais:
 
-Responsabilidades atuais:
-
-- `BotConfig`: formato de configuracao completa de um bot.
-- `BotConfigRepository`: contrato para buscar configuracoes.
-- `ConversationSessionRepository`: contrato de sessoes.
-- `TicketTransferGateway`: contrato de transferencia QChat.
-- `MessagingGateway`: contrato de envio de mensagens.
-- Tipos de mensagem normalizada, botoes, erros e intents.
+- `BotConfig`
+- `BotConfigRepository`
+- `ConversationSessionRepository`
+- `MessagingGateway`
+- `TicketTransferGateway`
+- `NormalizedIncomingMessage`
+- erros e tipos de menu
 
 ### Application
 
-A camada `application` orquestra regras de negocio e depende de contratos do
-dominio.
+Orquestra as regras de negocio:
 
-Responsabilidades atuais:
-
-- Resolver e mapear contexto de bot.
-- Selecionar menus e mensagens.
-- Converter menu configuravel para payload de botoes.
-- Processar mensagens no `HandleIncomingMessageUseCase`.
-- Decidir quando ignorar, enviar menu, salvar sessao ou transferir ticket.
+- resolver e mapear contexto de bot
+- selecionar menu e mensagem
+- decidir ignorar, transferir ou salvar sessao
+- aplicar regras de horario e retomada
+- consultar status de ticket QChat quando necessario
 
 ### Infrastructure
 
-A camada `infrastructure` implementa contratos externos e persistencia.
+Implementa integracoes externas e persistencia:
 
-Responsabilidades atuais:
-
-- `PostgresBotConfigRepository`: le `bot_configs` e converte linhas para
-  `BotConfig`.
-- `PostgresConversationSessionRepository`: persiste sessoes de atendimento.
-- `EvolutionMessagingGateway`: envia textos e botoes pela Evolution API.
-- `QChatTicketTransferGateway`: envia transferencia/mensagem para QChat.
-- `QChatPayloadNormalizer`: transforma payload QChat em
-  `NormalizedIncomingMessage`.
-- `db`: conexao Postgres.
+- `PostgresBotConfigRepository`
+- `PostgresConversationSessionRepository`
+- `PostgresQChatTicketStatusLookup`
+- `EvolutionMessagingGateway`
+- `QChatTicketTransferGateway`
+- `QChatPayloadNormalizer`
+- `EvolutionPayloadNormalizer`
 
 ### Presentation
 
-A camada `presentation` lida com HTTP.
+Lida com HTTP:
 
-Responsabilidades atuais:
-
-- Registrar rotas Fastify.
-- Logar recebimento e normalizacao.
-- Resolver bot na rota dinamica.
-- Montar o use case com gateways dinamicos.
-- Retornar respostas HTTP e delegar tratamento de erro para
-  `handleWebhookError`.
+- registrar rotas Fastify
+- resolver bot por token ou instance
+- montar use cases
+- retornar respostas HTTP
+- delegar erros para o handler central
 
 ## BotConfig
 
-`BotConfig` e a configuracao completa do bot em formato de dominio.
+`BotConfig` representa a configuracao completa do bot.
 
 Campos relevantes:
 
-- `id`: identificador interno do bot.
-- `name`: nome do bot.
-- `webhookToken`: segredo usado na rota dinamica.
-- `companyId`: empresa QChat associada.
-- `whatsappId`: WhatsApp QChat associado.
-- `active`: define se o bot pode ser resolvido.
-- `qchat.apiUrl`: URL da API QChat.
-- `qchat.apiToken`: token QChat.
-- `evolution.apiUrl`: URL da Evolution API.
-- `evolution.apiKey`: API key Evolution.
-- `evolution.instance`: instance Evolution usada no envio.
-- `queues.triageQueueId`: fila de triagem do bot.
-- `queues.supportQueueId`: fila de suporte.
-- `queues.financeQueueId`: fila financeira.
-- `queues.otherQueueId`: fila de outros assuntos.
-- `businessHours`: configuracao de horario, ainda parcialmente usada.
-- `messages`: mensagens configuraveis.
-- `menus`: menus configuraveis.
+- `id`
+- `name`
+- `webhookToken`
+- `companyId`
+- `whatsappId`
+- `active`
+- `qchat.apiUrl`
+- `qchat.apiToken`
+- `evolution.apiUrl`
+- `evolution.apiKey`
+- `evolution.instance`
+- `queues.triageQueueId`
+- `queues.supportQueueId`
+- `queues.financeQueueId`
+- `queues.otherQueueId`
+- `businessHours`
+- `messages`
+- `menus`
 
-No banco, esses dados estao em `bot_configs`. As configuracoes compostas ficam em
-colunas JSONB:
-
-- `queues_config`
-- `business_hours_config`
-- `messages_config`
-- `menus_config`
+No banco, os dados vivem em `bot_configs`, com estruturas compostas em JSONB.
 
 ## BotContext
 
-`BotContext` e uma versao reduzida e operacional do `BotConfig` para o fluxo de
-atendimento.
+`BotContext` e a visao operacional usada no runtime.
 
 Campos atuais:
 
 - `botId`
 - `botName`
+- `companyId`
+- `whatsappId`
 - `triageQueueId`
 - `menus`
 - `messages`
 
-O use case recebe esse contexto como parametro opcional. A presenca dele ativa o
-comportamento dinamico. A ausencia dele mantem o comportamento legado.
+O contexto habilita o comportamento dinamico. Sem ele, o legado segue ativo.
 
-## BotConfigResolver
+## Resolvedores
 
-`BotConfigResolver` e o contrato de resolucao de bot.
+### BotConfigResolver
 
 Metodos atuais:
 
 - `resolveByWebhookToken(webhookToken)`
 - `resolveByMessage({ companyId, whatsappId })`
 
-`DefaultBotConfigResolver` delega a busca para `BotConfigRepository`.
+`resolveByWebhookToken` e o caminho principal do QChat dinamico. O resolver por
+mensagem e usado no fluxo Evolution.
 
-Na rota dinamica, o caminho usado hoje e `resolveByWebhookToken`. A resolucao por
-mensagem existe para cenarios em que a origem QChat seja usada para identificar o
-bot, mas a rota dinamica atual resolve primeiro pelo token da URL.
-
-## BotContextMapper
+### BotContextMapper
 
 `BotContextMapper.fromConfig(config)` transforma `BotConfig` em `BotContext`.
+Ele nao cria gateways e nao acessa banco.
 
-Mapeamento atual:
+## Gateways dinamicos
 
-- `config.id` -> `context.botId`
-- `config.name` -> `context.botName`
-- `config.queues.triageQueueId` -> `context.triageQueueId`
-- `config.menus` -> `context.menus`
-- `config.messages` -> `context.messages`
-
-Ele nao cria gateways e nao acessa banco. Sua responsabilidade e apenas adaptar
-o formato de configuracao para o formato usado no use case.
-
-## MenuResolver
-
-`MenuResolver` le menus e mensagens do `BotContext`.
-
-Operacoes atuais:
-
-- `getMenu(context, menuId)`: busca um menu por id.
-- `findButton(context, buttonId)`: procura um botao em todos os menus.
-- `getMessage(context, key)`: busca uma mensagem por chave.
-
-Ele e usado no fluxo dinamico para resolver a proxima acao de um botao e para
-buscar mensagens de confirmacao.
-
-## MenuToButtonMessage
-
-`MenuToButtonMessage.convert(menu)` converte um `BotMenu` configuravel para o
-`ButtonMessage` esperado pelo `MessagingGateway`.
-
-Conversao atual:
-
-- `menu.title` -> `ButtonMessage.title`
-- `menu.description` -> `ButtonMessage.description`
-- cada botao vira `{ type: "reply", displayText, id }`
-
-Essa conversao desacopla a estrutura de menu persistida da estrutura enviada
-pela Evolution API.
-
-## Gateways Dinamicos
-
-Os gateways aceitam configuracao opcional. Isso permite dois modos:
-
-- Com config: fluxo dinamico por bot.
-- Sem config: fallback legado por ENV.
+Os gateways aceitam config opcional.
 
 ### EvolutionMessagingGateway
 
-Config opcional:
+Config:
 
 ```ts
 {
@@ -278,9 +309,7 @@ Config opcional:
 }
 ```
 
-No fluxo dinamico, a rota passa `botConfig.evolution`.
-
-Sem config, usa:
+Sem config, o gateway usa:
 
 - `EVOLUTION_API_URL`
 - `EVOLUTION_API_KEY`
@@ -288,7 +317,7 @@ Sem config, usa:
 
 ### QChatTicketTransferGateway
 
-Config opcional:
+Config:
 
 ```ts
 {
@@ -297,138 +326,48 @@ Config opcional:
 }
 ```
 
-No fluxo dinamico, a rota passa `botConfig.qchat`.
-
-Sem config, usa:
+Sem config, o gateway usa:
 
 - `QCHAT_API_URL`
 - `QCHAT_API_TOKEN`
 
-## Fallbacks Legados
+## Coexistencia de bots
 
-Os fallbacks legados existem para preservar `/webhook/qchat`.
+Dois bots coexistem porque cada um tem um `webhookToken` e um `BotConfig`
+proprio. Exemplo de ambiente de homologacao:
 
-Fallbacks atuais quando nao ha `BotContext`:
+- `qos-prod`
+- `qos-test-bot`
 
-- Gateways usam ENV.
-- Fila de triagem usa `queueConfig.triageQueueId`.
-- Transferencias usam `queueConfig.supportQueueId`,
-  `queueConfig.financeQueueId` e `queueConfig.otherQueueId`.
-- Menus usam `mainMenu`, `financeMenu` e `afterHoursMenu` estaticos.
-- Mensagens usam constantes de `application/messages`.
+Em producao, o esperado e usar tokens nao previsiveis.
 
-Fallbacks ainda presentes no fluxo dinamico:
+## Gestao operacional
 
-- O use case ainda recebe `queueConfig` no construtor, mas quando `BotContext`
-  existe a validacao da fila de triagem usa `context.triageQueueId`.
-- O horario comercial ainda usa `defaultBusinessHoursConfig` em vez de
-  `botConfig.businessHours`.
+Comandos uteis:
 
-## Como Dois Bots Coexistem
-
-Dois bots coexistem porque cada um tem um `webhookToken` e uma configuracao
-propria em `bot_configs`. Em producao, esses tokens devem ser UUIDs seguros. Em
-homologacao, tokens legiveis podem ser usados quando facilitarem testes.
-
-Exemplo:
-
-```text
-/webhook/qchat/qos-prod
-/webhook/qchat/qos-test-bot
+```bash
+npm run bot:list
+npm run bot:show -- <botId>
+npm run bot:show -- <companyId>:<whatsappId>
+npm run bot:rotate-token -- <botId>
+npm run bot:rotate-token -- <companyId>:<whatsappId>
+npm run bot:health -- <botId>
+npm run bot:health -- <companyId>:<whatsappId>
 ```
 
-O exemplo `qos-prod` representa um identificador historico/desenvolvimento. Para
-producao, o formato esperado e:
+`bot:list` mostra tokens mascarados. `bot:show` exibe o token completo. `bot:rotate-token`
+gera um novo token e atualiza o banco. `bot:health` valida resolucao, config e
+estado operacional do bot.
 
-```text
-/webhook/qchat/3f9e0a7d-7a67-4f65-bd61-9b7d18df5a2c
-```
+## Limites e proximos passos
 
-`qos-prod` pode apontar para:
+Pontos ainda intencionais:
 
-- `companyId`: `1`
-- `whatsappId`: `127`
-- `evolution.instance`: `4120182200`
-- filas: `46`, `1`, `3`, `2`
-- menus QoS
+- o fluxo legado continua dependente de ENV
+- o use case ainda preserva fallback legado para filas e menus estaticos
+- a arquitetura atual nao inclui GLPI
 
-`qos-test-bot` pode apontar para:
+Proxima evolucao planejada:
 
-- `companyId`: `2`
-- `whatsappId`: `228`
-- `evolution.instance`: `qos-test-bot-instance-228`
-- filas: `146`, `101`, `103`, `102`
-- menus com prefixo `[TEST BOT]`
+- GLPI como integracao de chamada e acompanhamento
 
-Na pratica, a mesma aplicacao processa as duas URLs. A diferenca esta no
-`BotConfig` resolvido, que altera gateways, menus, mensagens e filas do fluxo
-dinamico.
-
-## Onde Novas Integracoes Devem Entrar
-
-Novas integracoes devem entrar por contratos nas camadas corretas:
-
-- Novo provedor de entrada: criar um normalizer em `infrastructure/providers` que
-  produza `NormalizedIncomingMessage`.
-- Novo canal de envio: implementar `MessagingGateway`.
-- Nova plataforma de transferencia: implementar `TicketTransferGateway`.
-- Nova persistencia de bot: implementar `BotConfigRepository`.
-- Nova regra de resolucao: implementar ou estender `BotConfigResolver`.
-- Novo formato de menu: adaptar via mapper/conversor antes de chegar no use
-  case.
-
-O use case deve continuar recebendo contratos e dados normalizados. Ele nao deve
-depender diretamente de APIs externas.
-
-## Gestao de Webhook Tokens
-
-Comandos operacionais:
-
-- `npm run bot:list`: lista bots ativos com token mascarado.
-- `npm run bot:show -- <botId>`: exibe detalhes e token completo.
-- `npm run bot:show -- <companyId>:<whatsappId>`: alternativa quando o id interno
-  nao esta em maos.
-- `npm run bot:rotate-token -- <botId>`: gera novo token e atualiza o banco.
-- `npm run bot:rotate-token -- <companyId>:<whatsappId>`: alternativa por origem
-  QChat.
-
-Na rotacao, o token antigo aparece apenas mascarado. O token novo aparece
-completo uma unica vez para que a configuracao do webhook externo seja
-atualizada.
-
-## Limitacoes Atuais
-
-Limitacoes conhecidas da v1.1:
-
-- `businessHours` existe no `BotConfig`, mas o use case ainda usa
-  `defaultBusinessHoursConfig`.
-- O fluxo legado ainda depende de ENV e menus estaticos.
-- O use case ainda recebe `queueConfig` no construtor para manter fallback
-  legado.
-- A rota dinamica monta o use case diretamente em `server.ts`; ainda nao ha uma
-  factory dedicada para use cases dinamicos.
-- A validacao estrutural de `menus_config` e `messages_config` ainda e leve; os
-  casts acontecem no mapper.
-- As sessoes continuam indexadas principalmente por `ticketId`; nao ha
-  isolamento explicito por `botId` na chave de busca atual.
-- `resolveByMessage` existe, mas a rota dinamica atual resolve o bot pelo
-  `webhookToken`.
-
-## Proximos Passos
-
-Evolucoes recomendadas:
-
-- Usar `botConfig.businessHours` no fluxo dinamico.
-- Criar uma factory de use case dinamico para reduzir montagem em `server.ts`.
-- Validar `menus_config`, `messages_config` e `queues_config` com schema antes de
-  expor o bot.
-- Criar processo operacional para emitir, armazenar, rotacionar e revogar
-  `webhookToken` com auditoria.
-- Incluir `botId` ou `companyId` na estrategia de sessao para fortalecer
-  isolamento multibot.
-- Adicionar testes automatizados para rota dinamica com dois bots.
-- Adicionar endpoint administrativo ou CLI para criar `BotConfig` sem escrever
-  migration manual.
-- Expandir resolucao por `companyId`/`whatsappId` quando houver rotas ou canais
-  que nao usem `webhookToken`.
-- Documentar o processo operacional de rollback de um bot especifico.
