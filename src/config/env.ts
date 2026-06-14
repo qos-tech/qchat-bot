@@ -28,6 +28,7 @@ const envSchema = z.object({
   BUSINESS_END_MORNING: z.string().default("12:00"),
   BUSINESS_START_AFTERNOON: z.string().default("13:00"),
   BUSINESS_END_AFTERNOON: z.string().default("17:30"),
+  BUSINESS_HOURS_OVERRIDE: z.string().min(1).optional(),
 
   SESSION_RETENTION_DAYS: z.coerce.number().default(7),
 
