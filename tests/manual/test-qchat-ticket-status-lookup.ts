@@ -1,5 +1,21 @@
 import { HandleIncomingMessageUseCase } from "../../src/application/use-cases/handle-incoming-message-use-case.js";
 import type { BotContext } from "../../src/application/context/bot-context.js";
+import type { NormalizedIncomingMessage } from "../../src/domain/messaging/normalized-incoming-message.js";
+
+type SessionState = {
+  ticketId: string;
+  provider: "evolution";
+  phone: string;
+  stage: "waiting_human" | "awaiting_main_menu";
+  intent?: string;
+};
+
+type LookupResult = {
+  ticketId: string;
+  status: string;
+  userId?: string | number | null;
+  queueId?: string | number | null;
+};
 
 const botContext: BotContext = {
   botId: "bot-qos-prod",
@@ -48,6 +64,21 @@ const botContext: BotContext = {
   },
 };
 
+const input: NormalizedIncomingMessage = {
+  provider: "evolution",
+  messageId: "msg-1",
+  conversationId: "4120182200:554197035511",
+  ticketId: "4120182200:554197035511",
+  companyId: 1,
+  whatsappId: 127,
+  phone: "554197035511",
+  kind: "text",
+  text: "Nova mensagem do cliente",
+  fromMe: false,
+  isButtonReply: false,
+  raw: {},
+};
+
 const businessHours = {
   async check() {
     return {
@@ -57,156 +88,238 @@ const businessHours = {
   },
 };
 
-async function runOpenTicketScenario() {
-  let deleted = false;
-  let menuSent = false;
+function createScenarioRunner() {
+  const sessions = new Map<string, SessionState>();
+  const sendButtonsCalls: Array<{ title: string }> = [];
+  const transferCalls: Array<{ queueId: string | number }> = [];
+  let lookupCallCount = 0;
+  let currentLookupResult: LookupResult | null = null;
 
   const useCase = new HandleIncomingMessageUseCase(
     {
-      async findByTicketId() {
-        return {
-          ticketId: "4120182200:554197035511",
-          provider: "evolution",
-          phone: "554197035511",
-          stage: "waiting_human" as const,
-        };
+      async findByTicketId(ticketId: string) {
+        return sessions.get(ticketId) ?? null;
       },
-      async save() {},
-      async deleteByTicketId() {
-        deleted = true;
+      async save(session: SessionState) {
+        sessions.set(session.ticketId, session);
+      },
+      async deleteByTicketId(ticketId: string) {
+        sessions.delete(ticketId);
       },
     },
     {
       async sendText() {},
-      async sendButtons() {
-        menuSent = true;
+      async sendButtons(params) {
+        sendButtonsCalls.push({ title: params.payload.title });
       },
     },
     {
-      async transfer() {},
+      async transfer(params) {
+        transferCalls.push({ queueId: params.queueId });
+      },
     },
     businessHours,
     {
-      triageQueueId: "46",
+      triageQueueId: "legacy-triage",
       supportQueueId: "1",
       financeQueueId: "3",
       otherQueueId: "2",
     },
     {
       async findLatestByContact() {
-        return {
-          ticketId: "987",
-          status: "open",
-          companyId: "1",
-          whatsappId: "127",
-        };
+        lookupCallCount += 1;
+        return currentLookupResult;
       },
     },
   );
 
-  await useCase.execute(
-    {
-      provider: "evolution",
-      messageId: "msg-open",
-      conversationId: "4120182200:554197035511",
-      ticketId: "4120182200:554197035511",
-      phone: "554197035511",
-      kind: "text",
-      text: "Ainda preciso de ajuda",
-      fromMe: false,
-      isButtonReply: false,
-      raw: {},
+  return {
+    sessions,
+    sendButtonsCalls,
+    transferCalls,
+    setLookupResult(result: LookupResult | null) {
+      currentLookupResult = result;
     },
-    botContext,
-  );
+    async execute(initialSession: SessionState | null) {
+      sessions.clear();
+      sendButtonsCalls.length = 0;
+      transferCalls.length = 0;
+      lookupCallCount = 0;
 
-  if (deleted) {
+      if (initialSession) {
+        sessions.set(initialSession.ticketId, initialSession);
+      }
+
+      await useCase.execute(input, botContext);
+
+      return {
+        session: sessions.get(input.conversationId) ?? null,
+        lookupCallCount,
+        sendButtonsCount: sendButtonsCalls.length,
+        transferCount: transferCalls.length,
+        sendButtonsCalls: [...sendButtonsCalls],
+        transferCalls: [...transferCalls],
+      };
+    },
+  };
+}
+
+async function runScenario(params: {
+  name: string;
+  initialSession: SessionState | null;
+  lookupResult: LookupResult | null;
+  expectedSessionStage: SessionState["stage"] | null;
+  expectedMenuCount: number;
+  expectedTransferCount: number;
+}) {
+  const runner = createScenarioRunner();
+  runner.setLookupResult(params.lookupResult);
+
+  const result = await runner.execute(params.initialSession);
+
+  if (result.lookupCallCount !== 1) {
+    throw new Error(`${params.name}: lookup deveria ser executado uma vez`);
+  }
+
+  if (result.sendButtonsCount !== params.expectedMenuCount) {
     throw new Error(
-      "Sessão waiting_human não deveria ser removida com ticket aberto",
+      `${params.name}: menu esperado ${params.expectedMenuCount}, recebido ${result.sendButtonsCount}`,
     );
   }
 
-  if (menuSent) {
-    throw new Error("Bot não deveria reenviar menu com ticket humano aberto");
-  }
-}
-
-async function runClosedTicketScenario() {
-  let deleted = false;
-  let menuSent = false;
-
-  const useCase = new HandleIncomingMessageUseCase(
-    {
-      async findByTicketId() {
-        return {
-          ticketId: "4120182200:554197035511",
-          provider: "evolution",
-          phone: "554197035511",
-          stage: "waiting_human" as const,
-        };
-      },
-      async save() {},
-      async deleteByTicketId() {
-        deleted = true;
-      },
-    },
-    {
-      async sendText() {},
-      async sendButtons() {
-        menuSent = true;
-      },
-    },
-    {
-      async transfer() {},
-    },
-    businessHours,
-    {
-      triageQueueId: "46",
-      supportQueueId: "1",
-      financeQueueId: "3",
-      otherQueueId: "2",
-    },
-    {
-      async findLatestByContact() {
-        return {
-          ticketId: "987",
-          status: "closed",
-          companyId: "1",
-          whatsappId: "127",
-        };
-      },
-    },
-  );
-
-  await useCase.execute(
-    {
-      provider: "evolution",
-      messageId: "msg-closed",
-      conversationId: "4120182200:554197035511",
-      ticketId: "4120182200:554197035511",
-      phone: "554197035511",
-      kind: "text",
-      text: "Quero abrir novo atendimento",
-      fromMe: false,
-      isButtonReply: false,
-      raw: {},
-    },
-    botContext,
-  );
-
-  if (!deleted) {
+  if (result.transferCount !== params.expectedTransferCount) {
     throw new Error(
-      "Sessão waiting_human deveria ser removida com ticket fechado",
+      `${params.name}: transfer esperado ${params.expectedTransferCount}, recebido ${result.transferCount}`,
     );
   }
 
-  if (!menuSent) {
-    throw new Error("Bot deveria retomar o fluxo após ticket fechado");
+  if (params.expectedSessionStage === null) {
+    if (result.session !== null) {
+      throw new Error(`${params.name}: sessão deveria ser removida`);
+    }
+  } else if (result.session?.stage !== params.expectedSessionStage) {
+    throw new Error(
+      `${params.name}: estágio esperado ${params.expectedSessionStage}, recebido ${result.session?.stage}`,
+    );
   }
+
+  console.log(`\n=== ${params.name} ===`);
+  console.log({
+    lookupResult: params.lookupResult,
+    session: result.session,
+    sendButtonsCalls: result.sendButtonsCalls,
+    transferCalls: result.transferCalls,
+  });
 }
 
-await runOpenTicketScenario();
-await runClosedTicketScenario();
+await runScenario({
+  name: "SCENARIO 1 - status open",
+  initialSession: {
+    ticketId: input.conversationId,
+    provider: "evolution",
+    phone: input.phone,
+    stage: "waiting_human",
+  },
+  lookupResult: {
+    ticketId: "987",
+    status: "open",
+    userId: null,
+    queueId: null,
+  },
+  expectedSessionStage: "waiting_human",
+  expectedMenuCount: 0,
+  expectedTransferCount: 0,
+});
+
+await runScenario({
+  name: "SCENARIO 2 - status pending com userId",
+  initialSession: {
+    ticketId: input.conversationId,
+    provider: "evolution",
+    phone: input.phone,
+    stage: "waiting_human",
+  },
+  lookupResult: {
+    ticketId: "987",
+    status: "pending",
+    userId: 99,
+    queueId: "46",
+  },
+  expectedSessionStage: "waiting_human",
+  expectedMenuCount: 0,
+  expectedTransferCount: 0,
+});
+
+await runScenario({
+  name: "SCENARIO 3 - status pending na triagem",
+  initialSession: {
+    ticketId: input.conversationId,
+    provider: "evolution",
+    phone: input.phone,
+    stage: "waiting_human",
+  },
+  lookupResult: {
+    ticketId: "987",
+    status: "pending",
+    userId: null,
+    queueId: "46",
+  },
+  expectedSessionStage: "awaiting_main_menu",
+  expectedMenuCount: 1,
+  expectedTransferCount: 0,
+});
+
+await runScenario({
+  name: "SCENARIO 4 - status pending fora da triagem",
+  initialSession: {
+    ticketId: input.conversationId,
+    provider: "evolution",
+    phone: input.phone,
+    stage: "waiting_human",
+  },
+  lookupResult: {
+    ticketId: "987",
+    status: "pending",
+    userId: null,
+    queueId: "99",
+  },
+  expectedSessionStage: "waiting_human",
+  expectedMenuCount: 0,
+  expectedTransferCount: 0,
+});
+
+await runScenario({
+  name: "SCENARIO 5 - status closed",
+  initialSession: {
+    ticketId: input.conversationId,
+    provider: "evolution",
+    phone: input.phone,
+    stage: "waiting_human",
+  },
+  lookupResult: {
+    ticketId: "987",
+    status: "closed",
+    userId: null,
+    queueId: "99",
+  },
+  expectedSessionStage: "awaiting_main_menu",
+  expectedMenuCount: 1,
+  expectedTransferCount: 0,
+});
+
+await runScenario({
+  name: "SCENARIO 6 - ticket not found",
+  initialSession: {
+    ticketId: input.conversationId,
+    provider: "evolution",
+    phone: input.phone,
+    stage: "waiting_human",
+  },
+  lookupResult: null,
+  expectedSessionStage: "waiting_human",
+  expectedMenuCount: 0,
+  expectedTransferCount: 0,
+});
 
 console.log("OK");
 
