@@ -387,6 +387,11 @@ export class HandleIncomingMessageUseCase {
 
     if (context) {
       if (message.isButtonReply) {
+        const activeMenuId = this.resolveActiveMenuId(
+          session?.stage,
+          businessHours.isOpen,
+        );
+
         await this.executeContextButtonAction(
           context,
           message,
@@ -395,6 +400,7 @@ export class HandleIncomingMessageUseCase {
           session?.stage,
           businessHours.isOpen,
           businessHours.reason,
+          activeMenuId,
         );
 
         return;
@@ -743,14 +749,19 @@ export class HandleIncomingMessageUseCase {
     stage: string | undefined,
     isOpen: boolean,
     reason: string,
+    activeMenuId: string | null,
   ): Promise<void> {
-    const button = MenuResolver.findButton(context, message.buttonId ?? "");
+    const buttonId = message.buttonId ?? "";
+    const button = activeMenuId
+      ? MenuResolver.findButtonInMenu(context, activeMenuId, buttonId)
+      : MenuResolver.findButton(context, buttonId);
 
     if (!button) {
       console.info("[BOT] message_unhandled", {
         correlationId,
         ticketId: message.ticketId,
         stage,
+        activeMenuId,
         buttonId: message.buttonId,
         isOpen,
         reason,
@@ -758,6 +769,16 @@ export class HandleIncomingMessageUseCase {
 
       return;
     }
+
+    console.info("[BOT] dynamic_action_resolved", {
+      correlationId,
+      activeMenuId,
+      buttonId,
+      actionType: button.action.type,
+      ...(button.action.type === "transfer"
+        ? { messageKey: button.action.messageKey }
+        : {}),
+    });
 
     if (button.action.type === "transfer") {
       const confirmationMessage = MenuResolver.getMessage(
@@ -853,6 +874,21 @@ export class HandleIncomingMessageUseCase {
     }
 
     return;
+  }
+
+  private resolveActiveMenuId(
+    stage: string | undefined,
+    isOpen: boolean,
+  ): string | null {
+    if (stage === "awaiting_finance_menu") {
+      return "finance";
+    }
+
+    if (stage === "awaiting_main_menu") {
+      return isOpen ? "main" : "after_hours";
+    }
+
+    return null;
   }
 
   private async lookupLatestQChatTicket(
