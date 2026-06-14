@@ -13,6 +13,12 @@ export class DefaultBusinessHoursService implements BusinessHoursService {
     config: BusinessHoursConfig,
     date = new Date(),
   ): Promise<BusinessHoursResult> {
+    const override = this.resolveOverride(process.env.BUSINESS_HOURS_OVERRIDE);
+
+    if (override) {
+      return override;
+    }
+
     const localDate = toZonedTime(date, config.timezone);
 
     if (this.isWeekend(localDate)) {
@@ -49,6 +55,38 @@ export class DefaultBusinessHoursService implements BusinessHoursService {
     }
 
     return { isOpen: false, reason: "after_closing" };
+  }
+
+  private resolveOverride(
+    value: string | undefined,
+  ): BusinessHoursResult | null {
+    if (!value) {
+      return null;
+    }
+
+    const normalized = value.trim().toLowerCase();
+
+    if (
+      normalized === "open" ||
+      normalized === "true" ||
+      normalized === "1" ||
+      normalized === "business_hours"
+    ) {
+      return { isOpen: true, reason: "business_hours" };
+    }
+
+    if (
+      normalized === "closed" ||
+      normalized === "false" ||
+      normalized === "0" ||
+      normalized === "after_closing"
+    ) {
+      return { isOpen: false, reason: "after_closing" };
+    }
+
+    throw new Error(
+      `BUSINESS_HOURS_OVERRIDE inválido: ${value}. Use open/closed`,
+    );
   }
 
   private isWeekend(date: Date): boolean {

@@ -56,4 +56,46 @@ for (const scenario of scenarios) {
   console.log(result);
 }
 
+const originalOverride = process.env.BUSINESS_HOURS_OVERRIDE;
+
+try {
+  process.env.BUSINESS_HOURS_OVERRIDE = "open";
+
+  const forcedOpen = await service.check(
+    defaultBusinessHoursConfig,
+    new Date("2026-06-07T10:00:00-03:00"),
+  );
+
+  if (!forcedOpen.isOpen || forcedOpen.reason !== "business_hours") {
+    throw new Error("Override open deveria forcar business_hours");
+  }
+
+  console.log("\n========================");
+  console.log("Override open");
+  console.log("========================");
+  console.log(forcedOpen);
+
+  process.env.BUSINESS_HOURS_OVERRIDE = "closed";
+
+  const forcedClosed = await service.check(
+    defaultBusinessHoursConfig,
+    new Date("2026-06-08T09:00:00-03:00"),
+  );
+
+  if (forcedClosed.isOpen || forcedClosed.reason !== "after_closing") {
+    throw new Error("Override closed deveria forcar after_closing");
+  }
+
+  console.log("\n========================");
+  console.log("Override closed");
+  console.log("========================");
+  console.log(forcedClosed);
+} finally {
+  if (originalOverride === undefined) {
+    delete process.env.BUSINESS_HOURS_OVERRIDE;
+  } else {
+    process.env.BUSINESS_HOURS_OVERRIDE = originalOverride;
+  }
+}
+
 process.exit(0);
