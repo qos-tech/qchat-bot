@@ -1,59 +1,32 @@
 # Onboarding de Novo Bot
 
-Este guia descreve o processo completo para criar, ativar e validar um novo bot
-na arquitetura multibot da v1.1.
+Este guia descreve o processo para criar, validar e colocar em operacao um novo
+bot na arquitetura multibot da v1.2.
 
-## Visao Geral
+## Objetivo
 
-Um `BotConfig` e a configuracao persistida no banco para um bot especifico. Ele
-define o token secreto do webhook dinamico, a empresa, o WhatsApp, as
-credenciais das integracoes, filas, mensagens e menus.
+Um bot novo precisa entrar com configuracao propria no banco, webhook proprio,
+instance Evolution propria e contexto QChat proprio. O fluxo de atendimento
+deve funcionar sem dependencia do historico de outro bot.
 
-Um `BotContext` e a representacao de runtime derivada do `BotConfig`. O fluxo de
-atendimento usa esse contexto para carregar menus, mensagens e a fila de triagem
-do bot resolvido.
+## Checklist rapido
 
-O webhook dinamico recebe mensagens em:
+1. Criar instance Evolution exclusiva.
+2. Confirmar `companyId` e `whatsappId` no QChat.
+3. Preencher `bot_configs`.
+4. Validar `menus_config` e `messages_config`.
+5. Aplicar migration/seed.
+6. Rodar `npm run bot:health`.
+7. Configurar webhook Evolution em `/webhook/evolution`.
+8. Configurar webhook QChat dinamico em `/webhook/qchat/:webhookToken`.
+9. Testar texto, botao, atendimento aberto e retomada pos-fechamento.
+10. Validar horario com `BUSINESS_HOURS_OVERRIDE`.
 
-```text
-/webhook/qchat/:webhookToken
-```
+## 1. Configurar Evolution
 
-Ao receber uma requisicao, a rota resolve o `BotConfig` pelo `webhookToken`.
-Quando encontra um bot ativo, cria os gateways dinamicos com as configuracoes do
-bot:
+Crie uma instance exclusiva para o bot.
 
-- `EvolutionMessagingGateway(botConfig.evolution)`
-- `QChatTicketTransferGateway(botConfig.qchat)`
-
-Depois disso, o `BotConfig` vira `BotContext` e o use case processa a mensagem
-com menus, mensagens e filas daquele bot. A rota antiga `/webhook/qchat` continua
-usando o fluxo legado baseado em variaveis de ambiente.
-
-## Pre-requisitos
-
-Antes de criar um bot, tenha estes dados confirmados:
-
-- Evolution API: URL base, API key e nome da instance.
-- QChat: URL base, token de API, `companyId` e `whatsappId`.
-- Banco de dados: acesso para aplicar migrations/seeds.
-- Webhook publico: URL publica apontando para a rota dinamica do bot.
-
-Exemplo de webhook publico:
-
-```text
-https://bot.exemplo.com/webhook/qchat/3f9e0a7d-7a67-4f65-bd61-9b7d18df5a2c
-```
-
-O valor final da URL e o `webhook_token`. Trate esse valor como segredo
-operacional, da mesma forma que um token de API. Nao use nomes previsiveis em
-producao, como `acme-prod` ou `qos-prod`.
-
-## Passo 1 - Criar Instancia Evolution
-
-Crie uma instance exclusiva para o bot na Evolution API.
-
-Dados esperados:
+Exemplo:
 
 ```text
 instance: acme-whatsapp-001
@@ -61,29 +34,16 @@ apiUrl: https://api.evolution.exemplo.com
 apiKey: <EVOLUTION_API_KEY_DO_BOT>
 ```
 
-Valide a instance antes de usar em producao:
+Validacoes minimas:
 
-- A instance existe e esta conectada.
-- O WhatsApp correto esta pareado.
-- A API key tem permissao para enviar mensagens.
-- O envio de texto simples funciona.
-- O envio de botoes funciona, pois o bot envia menus com botoes.
+- instance conectada
+- envio de texto funcionando
+- envio de botoes funcionando
+- instance nao compartilhada com outro bot
 
-Teste minimo de envio:
+## 2. Configurar QChat
 
-```bash
-curl -X POST "$EVOLUTION_API_URL/message/sendText/$EVOLUTION_INSTANCE" \
-  -H "Content-Type: application/json" \
-  -H "apikey: $EVOLUTION_API_KEY" \
-  -d '{"number":"5541999999999","text":"Teste de envio do novo bot"}'
-```
-
-## Passo 2 - Criar Integracao QChat
-
-No QChat, confirme os identificadores da empresa e do WhatsApp que originam as
-mensagens desse bot.
-
-Dados esperados:
+Confirme os dados de integracao do bot:
 
 ```text
 companyId: 10
@@ -92,32 +52,31 @@ apiUrl: https://api.qchat.exemplo.com
 apiToken: <QCHAT_API_TOKEN_DO_BOT>
 ```
 
-O `companyId` e o `whatsappId` precisam ser exclusivos para o bot quando a
-resolucao por mensagem for usada. O token precisa permitir transferencia/envio
-para as filas configuradas no bot.
+Esses valores identificam o bot no lookup do QChat e precisam bater com os
+eventos de entrada usados em homologacao ou producao.
 
-## Passo 3 - Criar BotConfig
+## 3. Preencher bot_configs
 
-Crie uma migration/seed inserindo uma linha em `bot_configs`.
+Crie uma migration/seed com um registro em `bot_configs`.
 
 Campos principais:
 
-- `name`: nome interno do bot.
-- `webhook_token`: segredo usado na rota `/webhook/qchat/:webhookToken`.
-- `company_id`: empresa no QChat.
-- `whatsapp_id`: WhatsApp no QChat.
-- `active`: `true` para habilitar o bot.
-- `qchat_api_url`: URL base da API QChat.
-- `qchat_api_token`: token do QChat.
-- `evolution_api_url`: URL base da Evolution API.
-- `evolution_api_key`: API key da Evolution.
-- `evolution_instance`: instance Evolution usada para enviar menus.
-- `queues_config`: filas usadas no fluxo dinamico.
-- `business_hours_config`: horario de atendimento.
-- `messages_config`: mensagens de confirmacao.
-- `menus_config`: menus e acoes do bot.
+- `name`
+- `webhook_token`
+- `company_id`
+- `whatsapp_id`
+- `active`
+- `qchat_api_url`
+- `qchat_api_token`
+- `evolution_api_url`
+- `evolution_api_key`
+- `evolution_instance`
+- `queues_config`
+- `business_hours_config`
+- `messages_config`
+- `menus_config`
 
-Exemplo real de teste criado para validar multibot:
+Exemplo de homologacao usado para validacao multibot:
 
 ```text
 webhookToken: qos-test-bot
@@ -130,351 +89,137 @@ financeQueueId: 103
 otherQueueId: 102
 ```
 
-Esse exemplo e de homologacao e permanece legivel para facilitar testes. Para
-producao, gere um token seguro:
+Se o bot for de producao, gere um `webhook_token` nao previsivel:
 
 ```bash
 node -e "console.log(require('node:crypto').randomUUID())"
 ```
 
-Exemplo:
+Exemplo de token seguro:
 
 ```text
 3f9e0a7d-7a67-4f65-bd61-9b7d18df5a2c
 ```
 
-Nunca reutilize o mesmo `webhook_token` entre bots. Em logs, dashboards e
-chamados, use o token mascarado, por exemplo:
+## 4. Definir menus e mensagens
 
-```text
-3f9e0a7d-****-****-****-9b7d18df5a2c
-```
+Os menus ficam em `menus_config`. Os botao precisam apontar para acoes validas
+e para `messageKey` existentes em `messages_config`.
 
-Para listar bots sem expor tokens completos:
+Menus minimos:
 
-```bash
-npm run bot:list
-```
+- `main`
+- `after_hours`
 
-Para ver o token completo de um bot especifico:
+Se houver menu financeiro:
 
-```bash
-npm run bot:show -- <botId>
-```
+- `finance`
 
-Tambem e possivel usar o par exibido na listagem:
+Checklist de menu:
 
-```bash
-npm run bot:show -- <companyId>:<whatsappId>
-```
+- titulo identifica o bot visualmente
+- botoes usam ids unicos
+- `transfer` aponta para fila valida
+- `send_menu` aponta para outro menu existente
+- `messageKey` existe em `messages_config`
 
-Para regenerar o token:
+## 5. Aplicar migration/seed
 
-```bash
-npm run bot:rotate-token -- <botId>
-npm run bot:rotate-token -- <companyId>:<whatsappId>
-```
-
-O comando de rotacao exibe o token antigo mascarado e o token novo completo.
-Atualize imediatamente a URL publica configurada no QChat depois da rotacao.
-
-## Passo 4 - Criar Menus
-
-Os menus ficam em `menus_config`. Cada menu possui `id`, `title`,
-`description` e `buttons`.
-
-Cada bot deve ter, no minimo:
-
-- `main`: menu principal.
-- `after_hours`: menu fora do horario.
-
-Se o bot tiver submenu financeiro, inclua tambem:
-
-- `finance`: menu financeiro.
-
-Exemplo de menu principal:
-
-```json
-{
-  "main": {
-    "id": "main",
-    "title": "[ACME] Atendimento",
-    "description": "Escolha uma opcao:",
-    "buttons": [
-      {
-        "id": "acme_support",
-        "label": "Suporte",
-        "action": {
-          "type": "transfer",
-          "queueId": "201",
-          "intent": "support",
-          "messageKey": "support_confirmation"
-        }
-      },
-      {
-        "id": "acme_finance",
-        "label": "Financeiro",
-        "action": {
-          "type": "send_menu",
-          "menuId": "finance"
-        }
-      },
-      {
-        "id": "acme_other",
-        "label": "Outros",
-        "action": {
-          "type": "transfer",
-          "queueId": "202",
-          "intent": "other",
-          "messageKey": "other_confirmation"
-        }
-      }
-    ]
-  }
-}
-```
-
-Tipos de acao suportados:
-
-- `transfer`: transfere para uma fila QChat e envia uma mensagem.
-- `send_menu`: envia outro menu configurado no `menus_config`.
-
-## Passo 5 - Criar Mensagens
-
-As mensagens ficam em `messages_config`. Elas sao referenciadas pelos botoes com
-`messageKey`.
-
-Exemplo:
-
-```json
-{
-  "support_confirmation": "Recebemos sua solicitacao e vamos encaminhar para o suporte.",
-  "finance_confirmation": "Vamos encaminhar para o financeiro. Informe empresa ou CNPJ.",
-  "other_confirmation": "Recebemos sua solicitacao e vamos encaminhar para atendimento.",
-  "after_hours_support_confirmation": "Estamos fora do horario. O suporte respondera no proximo periodo util.",
-  "after_hours_other_confirmation": "Estamos fora do horario. Responderemos no proximo periodo util."
-}
-```
-
-Toda `messageKey` usada em `menus_config` deve existir em `messages_config`.
-
-## Passo 6 - Aplicar Migration/Seed
-
-Crie uma migration em `migrations/` seguindo o padrao:
+Use o padrao:
 
 ```text
 <timestamp>_seed-<nome-do-bot>.ts
 ```
 
-Use `INSERT ... ON CONFLICT (webhook_token) DO UPDATE` para permitir reaplicar a
-seed com seguranca.
-
-Comando para aplicar:
+Comando:
 
 ```bash
 npm run migrate:up
 ```
 
-Depois de aplicar, confirme que a migration entrou na tabela de controle do
-`node-pg-migrate` e que a linha existe em `bot_configs`.
+Depois da aplicacao, confirme que a linha entrou em `bot_configs`.
 
-## Passo 7 - Validar Bot
+## 6. Validar o bot
 
-Valide o resolver:
+### Health check
+
+```bash
+npm run bot:health -- <botId>
+npm run bot:health -- <companyId>:<whatsappId>
+```
+
+O comando valida resolucao, config e estado operacional do bot.
+
+### Resolver de configuracao
 
 ```bash
 npm run test:bot-config-resolver
 ```
 
-Valide manualmente:
+### Caminho Evolution
 
-- `/webhook/qchat/<token-seguro-do-qos>` continua resolvendo o bot QoS.
-- `/webhook/qchat/<novo-token>` resolve o novo bot.
-- O menu enviado mostra o titulo e os botoes do novo bot.
-- As transferencias usam os `queueId` do novo bot.
-- O envio do menu usa a `evolution_instance` do novo bot.
-- A transferencia usa `qchat_api_url` e `qchat_api_token` do novo bot.
-
-Exemplo de payload de validacao local, adaptando uma fixture QChat:
+Configure o webhook publico para:
 
 ```text
-POST /webhook/qchat/3f9e0a7d-7a67-4f65-bd61-9b7d18df5a2c
-Content-Type: application/json
-
-<payload QChat com companyId=10, whatsappId=501 e queueId igual a triageQueueId>
+https://<host-publico>/webhook/evolution
 ```
 
-Se o bot nao resolver:
+O payload precisa conter um evento `messages.upsert` e uma `instance` valida.
+O bot sera resolvido por `evolution_instance`.
 
-- Confirme se `active = true`.
-- Confirme se o `webhook_token` esta correto sem expor o valor completo em logs
-  ou tickets.
-- Confirme se a migration foi aplicada no banco usado pela aplicacao.
-- Confirme se `company_id` e `whatsapp_id` batem com o payload do QChat.
+### Caminho QChat dinamico
 
-## Passo 8 - Go Live
-
-Checklist de producao:
-
-- Instance Evolution criada, conectada e testada.
-- QChat API URL e token validados.
-- `companyId` e `whatsappId` confirmados no QChat.
-- Filas de triagem, suporte, financeiro e outros confirmadas.
-- Menus revisados com o cliente ou operador.
-- Mensagens de confirmacao revisadas.
-- `webhookToken` seguro gerado com UUID e armazenado como segredo operacional.
-- Webhook publico configurado no QChat:
+Configure o webhook publico para:
 
 ```text
 https://<host-publico>/webhook/qchat/<webhookToken>
 ```
 
-- `npm run migrate:up` executado no ambiente alvo.
-- `npm run test:bot-config-resolver` executado no ambiente alvo, quando houver
-  acesso ao banco.
-- Teste real de entrada no WhatsApp feito com fila de triagem correta.
-- Teste real de transferencia feito para cada fila configurada.
-- Logs revisados para confirmar `bot_config_resolved`, `menu_sent` e
-  `ticket_transferred`.
+## 7. Testes manuais obrigatorios
 
-## Exemplo de Seed
+### Texto -> menu
 
-Use este exemplo como base. Troque nomes, tokens, URLs, filas e mensagens antes
-de aplicar em producao. O `webhook_token` abaixo deve ser substituido por um UUID
-gerado para o bot real.
+- Envie uma mensagem simples.
+- Confirme que o menu correto e enviado.
 
-```ts
-import { MigrationBuilder } from "node-pg-migrate";
+### Botao -> transferencia
 
-export async function up(pgm: MigrationBuilder): Promise<void> {
-  pgm.sql(`
-    INSERT INTO bot_configs (
-      name,
-      webhook_token,
-      company_id,
-      whatsapp_id,
-      active,
-      qchat_api_url,
-      qchat_api_token,
-      evolution_api_url,
-      evolution_api_key,
-      evolution_instance,
-      queues_config,
-      business_hours_config,
-      messages_config,
-      menus_config
-    )
-    VALUES (
-      'ACME Atendimento',
-      '3f9e0a7d-7a67-4f65-bd61-9b7d18df5a2c',
-      10,
-      501,
-      true,
-      'https://api.qchat.exemplo.com',
-      '<QCHAT_API_TOKEN_DO_BOT>',
-      'https://api.evolution.exemplo.com',
-      '<EVOLUTION_API_KEY_DO_BOT>',
-      'acme-whatsapp-001',
-      '{
-        "triageQueueId": "200",
-        "supportQueueId": "201",
-        "financeQueueId": "203",
-        "otherQueueId": "202"
-      }'::jsonb,
-      '{
-        "timezone": "America/Sao_Paulo",
-        "morningStart": "08:30",
-        "morningEnd": "12:00",
-        "afternoonStart": "13:00",
-        "afternoonEnd": "17:30"
-      }'::jsonb,
-      '{
-        "support_confirmation": "Recebemos sua solicitacao e vamos encaminhar para o suporte.",
-        "finance_confirmation": "Vamos encaminhar para o financeiro. Informe empresa ou CNPJ.",
-        "other_confirmation": "Recebemos sua solicitacao e vamos encaminhar para atendimento.",
-        "after_hours_support_confirmation": "Estamos fora do horario. O suporte respondera no proximo periodo util.",
-        "after_hours_other_confirmation": "Estamos fora do horario. Responderemos no proximo periodo util."
-      }'::jsonb,
-      '{
-        "main": {
-          "id": "main",
-          "title": "[ACME] Atendimento",
-          "description": "Escolha uma opcao:",
-          "buttons": [
-            {
-              "id": "acme_support",
-              "label": "Suporte",
-              "action": {
-                "type": "transfer",
-                "queueId": "201",
-                "intent": "support",
-                "messageKey": "support_confirmation"
-              }
-            },
-            {
-              "id": "acme_other",
-              "label": "Outros",
-              "action": {
-                "type": "transfer",
-                "queueId": "202",
-                "intent": "other",
-                "messageKey": "other_confirmation"
-              }
-            }
-          ]
-        },
-        "after_hours": {
-          "id": "after_hours",
-          "title": "[ACME] Fora do Horario",
-          "description": "Deixe seu recado:",
-          "buttons": [
-            {
-              "id": "acme_support",
-              "label": "Recado Suporte",
-              "action": {
-                "type": "transfer",
-                "queueId": "201",
-                "intent": "support",
-                "messageKey": "after_hours_support_confirmation"
-              }
-            },
-            {
-              "id": "acme_other",
-              "label": "Recado Outros",
-              "action": {
-                "type": "transfer",
-                "queueId": "202",
-                "intent": "other",
-                "messageKey": "after_hours_other_confirmation"
-              }
-            }
-          ]
-        }
-      }'::jsonb
-    )
-    ON CONFLICT (webhook_token)
-    DO UPDATE SET
-      name = EXCLUDED.name,
-      company_id = EXCLUDED.company_id,
-      whatsapp_id = EXCLUDED.whatsapp_id,
-      active = EXCLUDED.active,
-      qchat_api_url = EXCLUDED.qchat_api_url,
-      qchat_api_token = EXCLUDED.qchat_api_token,
-      evolution_api_url = EXCLUDED.evolution_api_url,
-      evolution_api_key = EXCLUDED.evolution_api_key,
-      evolution_instance = EXCLUDED.evolution_instance,
-      queues_config = EXCLUDED.queues_config,
-      business_hours_config = EXCLUDED.business_hours_config,
-      messages_config = EXCLUDED.messages_config,
-      menus_config = EXCLUDED.menus_config,
-      updated_at = now();
-  `);
-}
+- Clique em um botao de transferencia.
+- Confirme a transferencia para a fila correta.
 
-export async function down(pgm: MigrationBuilder): Promise<void> {
-  pgm.sql(`
-    DELETE FROM bot_configs
-    WHERE webhook_token = '3f9e0a7d-7a67-4f65-bd61-9b7d18df5a2c';
-  `);
-}
+### Atendimento aberto
+
+- Simule ticket `open` ou `pending` com atendimento ativo.
+- Confirme que o bot ignora a mensagem e nao reinicia o fluxo.
+
+### Atendimento fechado ou reaberto
+
+- Simule ticket fechado.
+- Confirme que o bot retoma o fluxo.
+
+### Horario comercial
+
+Para testar fora do horario ou forcar um estado especifico:
+
+```bash
+BUSINESS_HOURS_OVERRIDE=after_closing npm run test:business-hours
+BUSINESS_HOURS_OVERRIDE=business_hours npm run test:business-hours
 ```
+
+## 8. Go live
+
+Checklist final:
+
+- instance Evolution conectada e validada
+- QChat API URL e token conferidos
+- `companyId` e `whatsappId` conferidos
+- filas de triagem, suporte, financeiro e outros conferidas
+- menus revisados
+- mensagens revisadas
+- `webhook_token` seguro gerado e guardado como segredo operacional
+- `npm run migrate:up` executado no ambiente alvo
+- `npm run bot:health` executado no ambiente alvo
+- teste real de entrada feito
+- teste real de transferencia feito
+- logs revisados para confirmar resolucao, menu e transferencia
+

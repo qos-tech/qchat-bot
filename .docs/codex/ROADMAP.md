@@ -1,14 +1,33 @@
-# Roadmap Codex - v1.1
+# Roadmap Codex
 
 ## Objetivo
 
-Evoluir o QChat Bot para suportar múltiplos bots, empresas, menus, filas e integrações.
+Evoluir o QChat Bot por fases claras, mantendo o fluxo legado enquanto o fluxo
+multibot e a entrada agnostica amadurecem.
 
-## Ordem das tarefas
+## Fase v1.1 - Multibot
 
-1. Evolution dinâmico por BotConfig
-2. QChat dinâmico por BotConfig
-3. Remover QueueConfig do fluxo dinâmico
-4. Finalizar menus e ações configuráveis
-5. Validar fluxo dinâmico ponta a ponta
-6. Documentar criação de novo bot
+- BotConfig por bot
+- resolucao dinamica de Evolution e QChat
+- coexistencia entre fluxo legado e fluxo dinamico
+- gestao de webhook token
+- onboarding operacional de novos bots
+
+## Fase v1.2 - Provider agnostico e ciclo de atendimento
+
+- entrada Evolution por `POST /webhook/evolution`
+- normalizacao de mensagens por provider
+- `conversationId` como identificador de correlacao
+- lookup de status do ticket no QChat
+- regra de retomada para `waiting_human`
+- resolucao de menu ativa por horario
+- override operacional de horario comercial
+- validacao de BotConfig e health check
+
+## Fase v1.3 - GLPI
+
+- integracao GLPI
+- abertura automatica de chamados
+- consulta de chamados
+- atualizacao de chamados
+
