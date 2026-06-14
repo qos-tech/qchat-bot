@@ -5,6 +5,20 @@ export class MenuResolver {
     return context.menus[menuId] ?? null;
   }
 
+  static findButtonInMenu(
+    context: BotContext,
+    menuId: string,
+    buttonId: string,
+  ): BotMenuButton | null {
+    const menu = this.getMenu(context, menuId);
+
+    if (!menu) {
+      return null;
+    }
+
+    return menu.buttons.find((item) => item.id === buttonId) ?? null;
+  }
+
   static findButton(
     context: BotContext,
     buttonId: string,
