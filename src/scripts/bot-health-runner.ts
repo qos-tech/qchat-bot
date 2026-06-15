@@ -13,6 +13,29 @@ export type BotHealthResult = {
   lines: HealthLine[];
 };
 
+function validateCustomerIdentificationMessages(
+  messages: Record<string, unknown>,
+): void {
+  requiredMessage(
+    messages.customer_identification_prompt,
+    "Bot.messages.customer_identification_prompt obrigatório",
+  );
+  requiredMessage(
+    messages.customer_identification_invalid,
+    "Bot.messages.customer_identification_invalid obrigatório",
+  );
+  requiredMessage(
+    messages.customer_identification_transfer_template,
+    "Bot.messages.customer_identification_transfer_template obrigatório",
+  );
+}
+
+function requiredMessage(value: unknown, errorMessage: string): void {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error(errorMessage);
+  }
+}
+
 export async function checkBotHealth(
   selectorInput: string,
 ): Promise<BotHealthResult> {
@@ -44,15 +67,35 @@ export async function checkBotHealth(
 
     BotConfigValidator.validate(config);
 
+    const healthLines: HealthLine[] = [
+      { level: "OK", message: "BotConfig válido" },
+      { level: "OK", message: "Evolution configurada" },
+      { level: "OK", message: "QChat configurado" },
+      { level: "OK", message: "Menus válidos" },
+      { level: "OK", message: "Mensagens válidas" },
+    ];
+
+    if (config.features?.customerIdentification?.enabled) {
+      validateCustomerIdentificationMessages(config.messages);
+      healthLines.push(
+        {
+          level: "OK",
+          message: "customer_identification_prompt válido",
+        },
+        {
+          level: "OK",
+          message: "customer_identification_invalid válido",
+        },
+        {
+          level: "OK",
+          message: "customer_identification_transfer_template válido",
+        },
+      );
+    }
+
     return {
       status: "HEALTHY",
-      lines: [
-        { level: "OK", message: "BotConfig válido" },
-        { level: "OK", message: "Evolution configurada" },
-        { level: "OK", message: "QChat configurado" },
-        { level: "OK", message: "Menus válidos" },
-        { level: "OK", message: "Mensagens válidas" },
-      ],
+      lines: healthLines,
     };
   } catch (error) {
     return {

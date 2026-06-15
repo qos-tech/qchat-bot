@@ -1,4 +1,3 @@
-import { CNPJ_INVALID_MESSAGE, CNPJ_PROMPT_MESSAGE } from "../../src/application/messages/index.js";
 import { HandleIncomingMessageUseCase } from "../../src/application/use-cases/handle-incoming-message-use-case.js";
 import type { BotContext } from "../../src/application/context/bot-context.js";
 
@@ -71,6 +70,10 @@ const botContext: BotContext = {
   messages: {
     support_confirmation: "Mensagem dinâmica de suporte",
     other_confirmation: "Mensagem dinâmica do banco/teste",
+    customer_identification_prompt: "Mensagem dinâmica para solicitar identificação.",
+    customer_identification_invalid: "Mensagem dinâmica de identificação inválida.",
+    customer_identification_transfer_template:
+      "Identificação do cliente: {{value}}",
   },
   features: {
     customerIdentification: {
@@ -216,8 +219,12 @@ async function runDynamicCnpjFlow() {
     throw new Error("Sessão pendente deveria guardar pendingAction=transfer");
   }
 
-  if (textCalls.length !== 1 || textCalls[0]?.message !== CNPJ_PROMPT_MESSAGE) {
-    throw new Error("Fluxo dinâmico deveria enviar a mensagem de CNPJ");
+  if (
+    textCalls.length !== 1 ||
+    textCalls[0]?.message !==
+      botContext.messages.customer_identification_prompt
+  ) {
+    throw new Error("Fluxo dinâmico deveria enviar a mensagem de identificação");
   }
 
   if (transferCalls.length !== 0) {
@@ -226,6 +233,43 @@ async function runDynamicCnpjFlow() {
 
   if (buttonCalls.length !== 0) {
     throw new Error("Fluxo dinâmico com transferência não deveria reenviar menu");
+  }
+
+  await useCase.execute(
+    {
+      provider: "evolution",
+      messageId: "msg-1b",
+      conversationId: "15551",
+      ticketId: "15551",
+      companyId: 1,
+      whatsappId: 122,
+      contactId: "84",
+      phone: "5541999999999",
+      kind: "text",
+      text: "   ",
+      fromMe: false,
+      isButtonReply: false,
+      status: "pending",
+      raw: {},
+    },
+    botContext,
+  );
+
+  const invalidSession = sessionStore.get("15551");
+  if (!invalidSession || invalidSession.stage !== "awaiting_customer_identification") {
+    throw new Error("Entrada vazia deveria manter a etapa de identificação");
+  }
+
+  if (textCalls.length !== 2) {
+    throw new Error("Entrada vazia deveria gerar uma mensagem inválida");
+  }
+
+  if (
+    textCalls[1]?.message !== botContext.messages.customer_identification_invalid
+  ) {
+    throw new Error(
+      "Entrada vazia deveria responder com a mensagem de identificação inválida",
+    );
   }
 
   await useCase.execute(
@@ -263,7 +307,7 @@ async function runDynamicCnpjFlow() {
     throw new Error("Nome da empresa deveria ser identificado como company_name");
   }
 
-  if (textCalls.length !== 1) {
+  if (textCalls.length !== 2) {
     throw new Error("Identificação do cliente não deveria enviar mensagem extra");
   }
 
@@ -273,8 +317,7 @@ async function runDynamicCnpjFlow() {
 
   const transferMessage = transferCalls[0]?.message as string | undefined;
   if (
-    !transferMessage?.includes("Tipo: company_name") ||
-    !transferMessage?.includes("Banapneus") ||
+    !transferMessage?.includes("Identificação do cliente: Banapneus") ||
     !transferMessage?.includes("Mensagem dinâmica do banco/teste")
   ) {
     throw new Error(

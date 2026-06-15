@@ -17,8 +17,9 @@ import {
   AFTER_HOURS_SUPPORT_CONFIRMATION_MESSAGE,
   FINANCE_CONFIRMATION_MESSAGE,
   OTHER_CONFIRMATION_MESSAGE,
-  CUSTOMER_IDENTIFICATION_PROMPT_MESSAGE,
-  CUSTOMER_IDENTIFICATION_TRANSFER_PREFIX_MESSAGE,
+  formatCustomerIdentificationTransferMessage,
+  resolveCustomerIdentificationInvalidMessage,
+  resolveCustomerIdentificationPromptMessage,
   SUPPORT_CONFIRMATION_MESSAGE,
 } from "../messages/index.js";
 import type { BusinessHoursService } from "../services/business-hours-service.js";
@@ -840,6 +841,26 @@ export class HandleIncomingMessageUseCase {
       return;
     }
 
+    const trimmedIdentification = message.text.trim();
+
+    if (trimmedIdentification.length === 0) {
+      await this.messaging.sendText({
+        correlationId,
+        phone: message.phone,
+        ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
+        message: resolveCustomerIdentificationInvalidMessage(context.messages),
+      });
+
+      console.info("[BOT] message_sent", {
+        correlationId,
+        ticketId: message.ticketId,
+        stage: "awaiting_customer_identification",
+        messageType: "customer_identification_invalid",
+      });
+
+      return;
+    }
+
     if (session.pendingAction !== "transfer" || !session.pendingQueueId) {
       console.info("[BOT] message_unhandled", {
         correlationId,
@@ -867,7 +888,10 @@ export class HandleIncomingMessageUseCase {
       );
     }
 
-    const transferMessage = `Identificação informada pelo cliente:\n\nTipo: ${identificationType}\nValor: ${customerIdentification}\n\n${CUSTOMER_IDENTIFICATION_TRANSFER_PREFIX_MESSAGE}\n\n${confirmationMessage}`;
+    const transferMessage = `${formatCustomerIdentificationTransferMessage(
+      context.messages,
+      customerIdentification,
+    )}\n\n${confirmationMessage}`;
 
     await this.sessions.save({
       ticketId: conversationId,
@@ -1003,7 +1027,7 @@ export class HandleIncomingMessageUseCase {
           correlationId,
           phone: message.phone,
           ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
-          message: CUSTOMER_IDENTIFICATION_PROMPT_MESSAGE,
+          message: resolveCustomerIdentificationPromptMessage(context.messages),
         });
 
         console.info("[BOT] message_sent", {

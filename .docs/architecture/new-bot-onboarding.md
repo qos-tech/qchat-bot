@@ -106,6 +106,16 @@ Exemplo de token seguro:
 Os menus ficam em `menus_config`. Os botao precisam apontar para acoes validas
 e para `messageKey` existentes em `messages_config`.
 
+Mensagens de identificacao do cliente:
+
+```json
+{
+  "customer_identification_prompt": "Para adiantar seu atendimento, informe a sua empresa ou o CNPJ.",
+  "customer_identification_invalid": "Nao consegui identificar a informacao enviada.",
+  "customer_identification_transfer_template": "Identificacao do cliente: {{value}}"
+}
+```
+
 Menus minimos:
 
 - `main`
@@ -222,4 +232,3 @@ Checklist final:
 - teste real de entrada feito
 - teste real de transferencia feito
 - logs revisados para confirmar resolucao, menu e transferencia
-

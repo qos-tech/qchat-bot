@@ -10,6 +10,17 @@ if (healthyByMessage.lines[0]?.message !== "BotConfig válido") {
   throw new Error("Primeira linha do health check saudável inesperada");
 }
 
+const healthyMessages = healthyByMessage.lines.map((line) => line.message);
+for (const expected of [
+  "customer_identification_prompt válido",
+  "customer_identification_invalid válido",
+  "customer_identification_transfer_template válido",
+]) {
+  if (!healthyMessages.includes(expected)) {
+    throw new Error(`Health check deveria validar ${expected}`);
+  }
+}
+
 console.log("HEALTHY BY MESSAGE:");
 console.log(JSON.stringify(healthyByMessage, null, 2));
 
@@ -17,6 +28,17 @@ const healthyByToken = await checkBotHealth("qos-test-bot");
 
 if (healthyByToken.status !== "HEALTHY") {
   throw new Error("Bot de teste deveria estar saudável por webhook token");
+}
+
+const healthyByTokenMessages = healthyByToken.lines.map((line) => line.message);
+for (const expected of [
+  "customer_identification_prompt válido",
+  "customer_identification_invalid válido",
+  "customer_identification_transfer_template válido",
+]) {
+  if (!healthyByTokenMessages.includes(expected)) {
+    throw new Error(`Health check do bot de teste deveria validar ${expected}`);
+  }
 }
 
 console.log("HEALTHY BY TOKEN:");
