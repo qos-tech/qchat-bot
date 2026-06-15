@@ -100,36 +100,31 @@ const baseContext: BotContext = {
   },
 };
 
-async function runCustomerIdentificationEnabledScenario() {
-  const context: BotContext = {
-    ...baseContext,
-    features: {
-      customerIdentification: {
-        enabled: true,
-        requiredBeforeTransfer: true,
-      },
-    },
-  };
-
+async function runCustomerIdentificationScenario(params: {
+  name: string;
+  ticketId: string;
+  context: BotContext;
+  shouldPrompt: boolean;
+}) {
   const { sessionStore, sendTextCalls, transferCalls, useCase } =
-    createUseCaseFixture(context);
+    createUseCaseFixture(params.context);
 
-  sessionStore.set("15551", {
-    ticketId: "15551",
+  sessionStore.set(params.ticketId, {
+    ticketId: params.ticketId,
     provider: "evolution",
-    phone: "5541999999999",
+    phone: `55419999999${params.ticketId.slice(-2)}`,
     stage: "awaiting_main_menu",
   });
 
   await useCase.execute(
     {
       provider: "evolution",
-      messageId: "msg-1",
-      conversationId: "15551",
-      ticketId: "15551",
+      messageId: `msg-${params.ticketId}`,
+      conversationId: params.ticketId,
+      ticketId: params.ticketId,
       companyId: 1,
       whatsappId: 122,
-      phone: "5541999999999",
+      phone: `55419999999${params.ticketId.slice(-2)}`,
       kind: "button",
       text: "Suporte",
       buttonId: "option_support",
@@ -139,80 +134,41 @@ async function runCustomerIdentificationEnabledScenario() {
       status: "pending",
       raw: {},
     },
-    context,
+    params.context,
   );
 
-  const session = sessionStore.get("15551");
-  if (session?.stage !== "awaiting_customer_identification") {
-    throw new Error(
-      "customerIdentification.enabled=true deveria pedir identificação antes de transferir",
-    );
+  const session = sessionStore.get(params.ticketId);
+
+  if (params.shouldPrompt) {
+    if (session?.stage !== "awaiting_customer_identification") {
+      throw new Error(
+        `${params.name}: customerIdentification deveria pedir identificação antes de transferir`,
+      );
+    }
+
+    if (sendTextCalls.length !== 1) {
+      throw new Error(`${params.name}: deveria enviar prompt`);
+    }
+
+    if (transferCalls.length !== 0) {
+      throw new Error(`${params.name}: não deveria transferir ainda`);
+    }
+
+    return;
   }
 
-  if (sendTextCalls.length !== 1) {
-    throw new Error("customerIdentification.enabled=true deveria enviar prompt");
-  }
-
-  if (transferCalls.length !== 0) {
-    throw new Error("customerIdentification.enabled=true não deveria transferir ainda");
-  }
-}
-
-async function runCustomerIdentificationDisabledScenario() {
-  const context: BotContext = {
-    ...baseContext,
-    features: {
-      customerIdentification: {
-        enabled: false,
-        requiredBeforeTransfer: false,
-      },
-    },
-  };
-
-  const { sessionStore, sendTextCalls, transferCalls, useCase } =
-    createUseCaseFixture(context);
-
-  sessionStore.set("15552", {
-    ticketId: "15552",
-    provider: "evolution",
-    phone: "5541999999998",
-    stage: "awaiting_main_menu",
-  });
-
-  await useCase.execute(
-    {
-      provider: "evolution",
-      messageId: "msg-2",
-      conversationId: "15552",
-      ticketId: "15552",
-      companyId: 1,
-      whatsappId: 122,
-      phone: "5541999999998",
-      kind: "button",
-      text: "Suporte",
-      buttonId: "option_support",
-      buttonText: "Suporte",
-      isButtonReply: true,
-      fromMe: false,
-      status: "pending",
-      raw: {},
-    },
-    context,
-  );
-
-  const session = sessionStore.get("15552");
   if (session?.stage !== "waiting_human") {
     throw new Error(
-      "customerIdentification.enabled=false deveria transferir imediatamente",
+      `${params.name}: customerIdentification deveria transferir imediatamente`,
     );
   }
 
   if (sendTextCalls.length !== 0) {
-    throw new Error("customerIdentification.enabled=false não deveria enviar prompt");
+    throw new Error(`${params.name}: não deveria enviar prompt`);
   }
 
   if (transferCalls.length !== 1) {
-    throw new Error("customerIdentification.enabled=false deveria transferir");
+    throw new Error(`${params.name}: deveria transferir`);
   }
 }
 
@@ -326,8 +282,53 @@ async function runQchatLifecycleConfigScenario() {
   }
 }
 
-await runCustomerIdentificationEnabledScenario();
-await runCustomerIdentificationDisabledScenario();
+await runCustomerIdentificationScenario({
+  name: "features ausentes",
+  ticketId: "15551",
+  context: { ...baseContext },
+  shouldPrompt: false,
+});
+
+await runCustomerIdentificationScenario({
+  name: "features vazio",
+  ticketId: "15552",
+  context: {
+    ...baseContext,
+    features: {},
+  },
+  shouldPrompt: false,
+});
+
+await runCustomerIdentificationScenario({
+  name: "customerIdentification.enabled=false",
+  ticketId: "15553",
+  context: {
+    ...baseContext,
+    features: {
+      customerIdentification: {
+        enabled: false,
+        requiredBeforeTransfer: false,
+      },
+    },
+  },
+  shouldPrompt: false,
+});
+
+await runCustomerIdentificationScenario({
+  name: "customerIdentification.enabled=true",
+  ticketId: "15554",
+    context: {
+      ...baseContext,
+      features: {
+        customerIdentification: {
+          enabled: true,
+          requiredBeforeTransfer: false,
+        },
+      },
+    },
+  shouldPrompt: true,
+});
+
 await runQchatLifecycleConfigScenario();
 
 console.log("OK");

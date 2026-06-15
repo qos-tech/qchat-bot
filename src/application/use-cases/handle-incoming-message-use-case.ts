@@ -773,15 +773,19 @@ export class HandleIncomingMessageUseCase {
   private shouldRequireCustomerIdentification(context?: BotContext): boolean {
     const customerIdentification = context?.features?.customerIdentification;
 
+    if (!context?.features) {
+      return false;
+    }
+
     if (!customerIdentification) {
-      return true;
+      return false;
     }
 
     if (!customerIdentification.enabled) {
       return false;
     }
 
-    return customerIdentification.requiredBeforeTransfer;
+    return true;
   }
 
   private resolveQchatTicketLifecycle(context?: BotContext): {

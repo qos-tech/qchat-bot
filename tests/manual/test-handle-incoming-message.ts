@@ -72,6 +72,12 @@ const botContext: BotContext = {
     support_confirmation: "Mensagem dinâmica de suporte",
     other_confirmation: "Mensagem dinâmica do banco/teste",
   },
+  features: {
+    customerIdentification: {
+      enabled: true,
+      requiredBeforeTransfer: true,
+    },
+  },
 };
 
 function createBaseMocks() {
