@@ -19,6 +19,7 @@
     "test:normalizer": "tsx tests/manual/test-qchat-normalizer.ts",
     "test:evolution-normalizer": "tsx tests/manual/test-evolution-normalizer.ts",
     "test:evolution-webhook": "tsx tests/manual/test-evolution-webhook.ts",
+    "test:evolution-human-ticket-guard": "tsx tests/manual/test-evolution-human-ticket-guard.ts",
     "test:qchat-ticket-status-lookup": "tsx tests/manual/test-qchat-ticket-status-lookup.ts",
     "test:after-hours-active-menu-resolution": "tsx tests/manual/test-after-hours-active-menu-resolution.ts",
     "test:session-repo": "tsx tests/manual/test-session-repository.ts",
