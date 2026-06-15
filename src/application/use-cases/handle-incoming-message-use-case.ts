@@ -164,8 +164,14 @@ export class HandleIncomingMessageUseCase {
             ? String(latestTicket.userId)
             : null;
         const triageQueueId = context?.triageQueueId ?? this.queues.triageQueueId;
+        const qchatTicketLifecycle =
+          this.resolveQchatTicketLifecycle(context);
+        const normalizedOpenStatuses = qchatTicketLifecycle.openStatuses;
+        const normalizedClosedStatuses = qchatTicketLifecycle.closedStatuses;
+        const normalizedPendingStatuses =
+          qchatTicketLifecycle.pendingStatuses;
 
-        if (normalizedStatus === "open") {
+        if (normalizedOpenStatuses.includes(normalizedStatus)) {
           console.info("[BOT] message_ignored", {
             correlationId,
             reason: "human_ticket_still_open",
@@ -180,7 +186,7 @@ export class HandleIncomingMessageUseCase {
           return;
         }
 
-        if (normalizedStatus === "pending") {
+        if (normalizedPendingStatuses.includes(normalizedStatus)) {
           if (normalizedUserId) {
             console.info("[BOT] message_ignored", {
               correlationId,
@@ -196,7 +202,10 @@ export class HandleIncomingMessageUseCase {
             return;
           }
 
-          if (normalizedQueueId === triageQueueId) {
+          if (
+            qchatTicketLifecycle.resumeWhenPendingInTriage &&
+            normalizedQueueId === triageQueueId
+          ) {
             await this.sessions.deleteByTicketId(conversationId);
 
             console.info("[BOT] session_deleted", {
@@ -227,7 +236,7 @@ export class HandleIncomingMessageUseCase {
 
             return;
           }
-        } else if (normalizedStatus === "closed") {
+        } else if (normalizedClosedStatuses.includes(normalizedStatus)) {
           await this.sessions.deleteByTicketId(conversationId);
 
           console.info("[BOT] session_deleted", {
@@ -761,6 +770,54 @@ export class HandleIncomingMessageUseCase {
     return MenuToButtonMessage.convert(menu);
   }
 
+  private shouldRequireCustomerIdentification(context?: BotContext): boolean {
+    const customerIdentification = context?.features?.customerIdentification;
+
+    if (!customerIdentification) {
+      return true;
+    }
+
+    if (!customerIdentification.enabled) {
+      return false;
+    }
+
+    return customerIdentification.requiredBeforeTransfer;
+  }
+
+  private resolveQchatTicketLifecycle(context?: BotContext): {
+    enabled: boolean;
+    openStatuses: string[];
+    closedStatuses: string[];
+    pendingStatuses: string[];
+    resumeWhenPendingInTriage: boolean;
+  } {
+    const lifecycle = context?.features?.qchatTicketLifecycle;
+
+    const defaults = {
+      enabled: true,
+      openStatuses: ["open"],
+      closedStatuses: ["closed"],
+      pendingStatuses: ["pending"],
+      resumeWhenPendingInTriage: true,
+    };
+
+    if (!lifecycle || !lifecycle.enabled) {
+      return defaults;
+    }
+
+    return {
+      enabled: lifecycle.enabled,
+      openStatuses: lifecycle.openStatuses.map((status) => status.toLowerCase()),
+      closedStatuses: lifecycle.closedStatuses.map((status) =>
+        status.toLowerCase(),
+      ),
+      pendingStatuses: lifecycle.pendingStatuses.map((status) =>
+        status.toLowerCase(),
+      ),
+      resumeWhenPendingInTriage: lifecycle.resumeWhenPendingInTriage,
+    };
+  }
+
   private async handleAwaitingCustomerIdentification(
     message: NormalizedIncomingMessage,
     context: BotContext | undefined,
@@ -899,45 +956,93 @@ export class HandleIncomingMessageUseCase {
     });
 
     if (button.action.type === "transfer") {
+      const confirmationMessage = MenuResolver.getMessage(
+        context,
+        button.action.messageKey,
+      );
+
+      if (!confirmationMessage) {
+        throw new Error(
+          `Mensagem "${button.action.messageKey}" não encontrada no BotContext`,
+        );
+      }
+
+      if (this.shouldRequireCustomerIdentification(context)) {
+        await this.sessions.save({
+          ticketId: conversationId,
+          provider: message.provider,
+          ...(message.companyId ? { companyId: String(message.companyId) } : {}),
+          ...(message.whatsappId
+            ? { whatsappId: String(message.whatsappId) }
+            : {}),
+          ...(message.contactId ? { contactId: String(message.contactId) } : {}),
+          phone: message.phone,
+          stage: "awaiting_customer_identification",
+          intent: button.action.intent as Intent,
+          pendingAction: "transfer",
+          pendingQueueId: String(button.action.queueId),
+          pendingIntent: button.action.intent,
+          pendingMessageKey: button.action.messageKey,
+        });
+
+        console.info("[BOT] session_saved", {
+          correlationId,
+          ticketId: message.ticketId,
+          stage: "awaiting_customer_identification",
+          intent: button.action.intent,
+          pendingAction: "transfer",
+          pendingQueueId: button.action.queueId,
+          pendingMessageKey: button.action.messageKey,
+        });
+
+        await this.messaging.sendText({
+          correlationId,
+          phone: message.phone,
+          ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
+          message: CUSTOMER_IDENTIFICATION_PROMPT_MESSAGE,
+        });
+
+        console.info("[BOT] message_sent", {
+          correlationId,
+          ticketId: message.ticketId,
+          stage: "awaiting_customer_identification",
+          messageType: "customer_identification_prompt",
+        });
+
+        return;
+      }
+
+      await this.transfer.transfer({
+        correlationId,
+        number: message.phone,
+        queueId: button.action.queueId,
+        status: "pending",
+        message: confirmationMessage,
+      });
+
+      console.info("[BOT] ticket_transferred", {
+        correlationId,
+        ticketId: message.ticketId,
+        queueId: button.action.queueId,
+        intent: button.action.intent,
+      });
+
       await this.sessions.save({
         ticketId: conversationId,
         provider: message.provider,
         ...(message.companyId ? { companyId: String(message.companyId) } : {}),
-        ...(message.whatsappId
-          ? { whatsappId: String(message.whatsappId) }
-          : {}),
+        ...(message.whatsappId ? { whatsappId: String(message.whatsappId) } : {}),
         ...(message.contactId ? { contactId: String(message.contactId) } : {}),
         phone: message.phone,
-        stage: "awaiting_customer_identification",
+        stage: "waiting_human",
         intent: button.action.intent as Intent,
-        pendingAction: "transfer",
-        pendingQueueId: String(button.action.queueId),
-        pendingIntent: button.action.intent,
-        pendingMessageKey: button.action.messageKey,
       });
 
       console.info("[BOT] session_saved", {
         correlationId,
         ticketId: message.ticketId,
-        stage: "awaiting_customer_identification",
+        stage: "waiting_human",
         intent: button.action.intent,
-        pendingAction: "transfer",
-        pendingQueueId: button.action.queueId,
-        pendingMessageKey: button.action.messageKey,
-      });
-
-      await this.messaging.sendText({
-        correlationId,
-        phone: message.phone,
-        ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
-        message: CUSTOMER_IDENTIFICATION_PROMPT_MESSAGE,
-      });
-
-      console.info("[BOT] message_sent", {
-        correlationId,
-        ticketId: message.ticketId,
-        stage: "awaiting_customer_identification",
-        messageType: "customer_identification_prompt",
       });
 
       return;

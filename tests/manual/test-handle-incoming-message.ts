@@ -200,8 +200,10 @@ async function runDynamicCnpjFlow() {
   );
 
   const pendingSession = sessionStore.get("15551");
-  if (!pendingSession || pendingSession.stage !== "awaiting_cnpj") {
-    throw new Error("Fluxo dinâmico deveria pedir CNPJ antes de transferir");
+  if (!pendingSession || pendingSession.stage !== "awaiting_customer_identification") {
+    throw new Error(
+      "Fluxo dinâmico deveria pedir identificação do cliente antes de transferir",
+    );
   }
 
   if (pendingSession.pendingAction !== "transfer") {
@@ -231,36 +233,7 @@ async function runDynamicCnpjFlow() {
       contactId: "84",
       phone: "5541999999999",
       kind: "text",
-      text: "123",
-      fromMe: false,
-      isButtonReply: false,
-      status: "pending",
-      raw: {},
-    },
-    botContext,
-  );
-
-  const invalidSession = sessionStore.get("15551");
-  if (!invalidSession || invalidSession.stage !== "awaiting_cnpj") {
-    throw new Error("CNPJ inválido deveria manter awaiting_cnpj");
-  }
-
-  if (textCalls.length !== 2 || textCalls[1]?.message !== CNPJ_INVALID_MESSAGE) {
-    throw new Error("CNPJ inválido deveria responder com erro");
-  }
-
-  await useCase.execute(
-    {
-      provider: "evolution",
-      messageId: "msg-3",
-      conversationId: "15551",
-      ticketId: "15551",
-      companyId: 1,
-      whatsappId: 122,
-      contactId: "84",
-      phone: "5541999999999",
-      kind: "text",
-      text: "04.252.011/0001-10",
+      text: "Banapneus",
       fromMe: false,
       isButtonReply: false,
       status: "pending",
@@ -271,23 +244,36 @@ async function runDynamicCnpjFlow() {
 
   const completedSession = sessionStore.get("15551");
   if (!completedSession || completedSession.stage !== "waiting_human") {
-    throw new Error("CNPJ válido deveria finalizar em waiting_human");
+    throw new Error(
+      "Identificação do cliente deveria finalizar em waiting_human",
+    );
   }
 
-  if (completedSession.cnpj !== "04252011000110") {
-    throw new Error("CNPJ deveria ser salvo normalizado na sessão");
+  if (completedSession.customerIdentification !== "Banapneus") {
+    throw new Error("Nome da empresa deveria ser salvo na sessão");
+  }
+
+  if (completedSession.identificationType !== "company_name") {
+    throw new Error("Nome da empresa deveria ser identificado como company_name");
+  }
+
+  if (textCalls.length !== 1) {
+    throw new Error("Identificação do cliente não deveria enviar mensagem extra");
   }
 
   if (transferCalls.length !== 1) {
-    throw new Error("CNPJ válido deveria disparar uma transferência");
+    throw new Error("Identificação do cliente deveria disparar uma transferência");
   }
 
   const transferMessage = transferCalls[0]?.message as string | undefined;
   if (
-    !transferMessage?.includes("CNPJ informado pelo cliente: 04252011000110") ||
+    !transferMessage?.includes("Tipo: company_name") ||
+    !transferMessage?.includes("Banapneus") ||
     !transferMessage?.includes("Mensagem dinâmica do banco/teste")
   ) {
-    throw new Error("Mensagem de transferência deveria incluir CNPJ e confirmação");
+    throw new Error(
+      "Mensagem de transferência deveria incluir identificação e confirmação",
+    );
   }
 }
 
