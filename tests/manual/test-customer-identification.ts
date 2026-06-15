@@ -1,4 +1,3 @@
-import { CUSTOMER_IDENTIFICATION_PROMPT_MESSAGE } from "../../src/application/messages/index.js";
 import { HandleIncomingMessageUseCase } from "../../src/application/use-cases/handle-incoming-message-use-case.js";
 import type { BotContext } from "../../src/application/context/bot-context.js";
 
@@ -15,7 +14,7 @@ type SessionState = {
   identificationType?: "company_name" | "cnpj";
 };
 
-const botContext: BotContext = {
+const baseContext: BotContext = {
   botId: "test-bot",
   botName: "Bot Teste",
   companyId: 1,
@@ -39,39 +38,35 @@ const botContext: BotContext = {
         },
       ],
     },
-    after_hours: {
-      id: "after_hours",
-      title: "Menu Fora Teste",
-      description: "Escolha:",
-      buttons: [
-        {
-          id: "option_support",
-          label: "Suporte",
-          action: {
-            type: "transfer",
-            queueId: "1",
-            intent: "support",
-            messageKey: "after_hours_support_confirmation",
-          },
-        },
-      ],
-    },
   },
   messages: {
     support_confirmation: "Mensagem dinâmica de suporte",
-    after_hours_support_confirmation: "Mensagem dinâmica fora do horário",
   },
 };
 
-function createUseCaseFixture() {
+function createUseCaseFixture(messages?: Record<string, string>) {
   const sessionStore = new Map<string, SessionState>();
   const sendTextCalls: Array<Record<string, unknown>> = [];
   const transferCalls: Array<Record<string, unknown>> = [];
+  const context: BotContext = {
+    ...baseContext,
+    messages: {
+      ...baseContext.messages,
+      ...(messages ?? {}),
+    },
+    features: {
+      customerIdentification: {
+        enabled: true,
+        requiredBeforeTransfer: true,
+      },
+    },
+  };
+
   const businessHours = {
     async check() {
       return {
-        isOpen: false,
-        reason: "after_closing" as const,
+        isOpen: true,
+        reason: "business_hours" as const,
       };
     },
   };
@@ -113,21 +108,18 @@ function createUseCaseFixture() {
     },
   );
 
-  return {
-    sessionStore,
-    sendTextCalls,
-    transferCalls,
-    useCase,
-  };
+  return { context, sessionStore, sendTextCalls, transferCalls, useCase };
 }
 
 async function runScenario(params: {
   name: string;
-  identificationText: string;
-  expectedType: "company_name" | "cnpj";
-  expectedValue: string;
+  messages?: Record<string, string>;
+  expectedPrompt: string;
+  expectedInvalid: string;
+  expectedTemplate: string;
 }) {
-  const { sessionStore, sendTextCalls, transferCalls, useCase } = createUseCaseFixture();
+  const { context, sessionStore, sendTextCalls, transferCalls, useCase } =
+    createUseCaseFixture(params.messages);
 
   sessionStore.set("15551", {
     ticketId: "15551",
@@ -155,7 +147,7 @@ async function runScenario(params: {
       status: "pending",
       raw: {},
     },
-    botContext,
+    context,
   );
 
   const pendingSession = sessionStore.get("15551");
@@ -163,7 +155,7 @@ async function runScenario(params: {
     throw new Error(`${params.name}: deveria entrar em awaiting_customer_identification`);
   }
 
-  if (sendTextCalls.length !== 1 || sendTextCalls[0]?.message !== CUSTOMER_IDENTIFICATION_PROMPT_MESSAGE) {
+  if (sendTextCalls.length !== 1 || sendTextCalls[0]?.message !== params.expectedPrompt) {
     throw new Error(`${params.name}: deveria enviar a solicitação de identificação`);
   }
 
@@ -182,13 +174,42 @@ async function runScenario(params: {
       contactId: "84",
       phone: "5541999999999",
       kind: "text",
-      text: params.identificationText,
+      text: "   ",
       fromMe: false,
       isButtonReply: false,
       status: "pending",
       raw: {},
     },
-    botContext,
+    context,
+  );
+
+  const invalidSession = sessionStore.get("15551");
+  if (!invalidSession || invalidSession.stage !== "awaiting_customer_identification") {
+    throw new Error(`${params.name}: entrada vazia deveria manter awaiting_customer_identification`);
+  }
+
+  if (sendTextCalls.length !== 2 || sendTextCalls[1]?.message !== params.expectedInvalid) {
+    throw new Error(`${params.name}: entrada vazia deveria responder com a mensagem inválida`);
+  }
+
+  await useCase.execute(
+    {
+      provider: "evolution",
+      messageId: "msg-3",
+      conversationId: "15551",
+      ticketId: "15551",
+      companyId: 1,
+      whatsappId: 122,
+      contactId: "84",
+      phone: "5541999999999",
+      kind: "text",
+      text: "Banapneus",
+      fromMe: false,
+      isButtonReply: false,
+      status: "pending",
+      raw: {},
+    },
+    context,
   );
 
   const completedSession = sessionStore.get("15551");
@@ -196,15 +217,15 @@ async function runScenario(params: {
     throw new Error(`${params.name}: deveria finalizar em waiting_human`);
   }
 
-  if (completedSession.identificationType !== params.expectedType) {
+  if (completedSession.identificationType !== "company_name") {
     throw new Error(
-      `${params.name}: identificationType esperado ${params.expectedType}, recebido ${String(completedSession.identificationType)}`,
+      `${params.name}: identificationType esperado company_name, recebido ${String(completedSession.identificationType)}`,
     );
   }
 
-  if (completedSession.customerIdentification !== params.expectedValue) {
+  if (completedSession.customerIdentification !== "Banapneus") {
     throw new Error(
-      `${params.name}: customerIdentification esperado ${params.expectedValue}, recebido ${String(completedSession.customerIdentification)}`,
+      `${params.name}: customerIdentification esperado Banapneus, recebido ${String(completedSession.customerIdentification)}`,
     );
   }
 
@@ -213,41 +234,48 @@ async function runScenario(params: {
   }
 
   const transferMessage = String(transferCalls[0]?.message ?? "");
+  const expectedTransferMessage = params.expectedTemplate.replaceAll(
+    "{{value}}",
+    "Banapneus",
+  );
+
   if (
-    !transferMessage.includes(`Tipo: ${params.expectedType}`) ||
-    !transferMessage.includes(`Valor: ${params.expectedValue}`)
+    !transferMessage.includes(expectedTransferMessage) ||
+    !transferMessage.includes("Mensagem dinâmica de suporte")
   ) {
-    throw new Error(`${params.name}: mensagem de transferência não contém a identificação`);
+    throw new Error(
+      `${params.name}: mensagem de transferência não contém o template esperado`,
+    );
   }
 
   console.log(`\n=== ${params.name} ===`);
   console.log({
-    identificationType: completedSession.identificationType,
-    customerIdentification: completedSession.customerIdentification,
-    stage: completedSession.stage,
+    prompt: sendTextCalls[0]?.message,
+    invalid: sendTextCalls[1]?.message,
     transferMessage,
   });
 }
 
 await runScenario({
-  name: "EMPRESA",
-  identificationText: "Banapneus",
-  expectedType: "company_name",
-  expectedValue: "Banapneus",
+  name: "CONFIG COMPLETA",
+  messages: {
+    customer_identification_prompt: "PROMPT CUSTOMIZADO",
+    customer_identification_invalid: "INVALIDO CUSTOMIZADO",
+    customer_identification_transfer_template: "Cliente informado: {{value}}",
+  },
+  expectedPrompt: "PROMPT CUSTOMIZADO",
+  expectedInvalid: "INVALIDO CUSTOMIZADO",
+  expectedTemplate: "Cliente informado: {{value}}",
 });
 
 await runScenario({
-  name: "CNPJ COM MASCARA",
-  identificationText: "04.252.011/0001-10",
-  expectedType: "cnpj",
-  expectedValue: "04252011000110",
-});
-
-await runScenario({
-  name: "CNPJ SEM MASCARA",
-  identificationText: "04252011000110",
-  expectedType: "cnpj",
-  expectedValue: "04252011000110",
+  name: "CONFIG AUSENTE",
+  messages: {},
+  expectedPrompt:
+    "Para adiantar seu atendimento, informe o nome da sua empresa ou o CNPJ.",
+  expectedInvalid:
+    "Não consegui identificar a informação enviada.\n\nPor favor, informe o nome da empresa ou o CNPJ.",
+  expectedTemplate: "Identificação do cliente: {{value}}",
 });
 
 console.log("OK");

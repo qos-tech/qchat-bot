@@ -1,4 +1,3 @@
-import { CNPJ_PROMPT_MESSAGE } from "../../src/application/messages/index.js";
 import { HandleIncomingMessageUseCase } from "../../src/application/use-cases/handle-incoming-message-use-case.js";
 import type { BotContext } from "../../src/application/context/bot-context.js";
 
@@ -6,7 +5,7 @@ type SessionState = {
   ticketId: string;
   provider: "evolution";
   phone: string;
-  stage: "awaiting_main_menu" | "awaiting_finance_menu" | "awaiting_cnpj";
+  stage: "awaiting_main_menu" | "awaiting_finance_menu" | "awaiting_customer_identification";
   pendingAction?: string;
   pendingQueueId?: string;
   pendingIntent?: string;
@@ -84,6 +83,16 @@ const botContext: BotContext = {
     support_confirmation: "CONFIRMACAO_MAIN",
     after_hours_support_confirmation: "CONFIRMACAO_AFTER_HOURS",
     finance_confirmation: "CONFIRMACAO_FINANCEIRO",
+    customer_identification_prompt: "PROMPT AFTER HOURS",
+    customer_identification_invalid: "INVALID AFTER HOURS",
+    customer_identification_transfer_template:
+      "Identificação do cliente: {{value}}",
+  },
+  features: {
+    customerIdentification: {
+      enabled: true,
+      requiredBeforeTransfer: true,
+    },
   },
 };
 
@@ -229,8 +238,10 @@ async function runScenario(params: {
   }
 
   const savedSession = sessionStore.get(inputBase.conversationId);
-  if (!savedSession || savedSession.stage !== "awaiting_cnpj") {
-    throw new Error(`${params.name}: sessão deveria ficar em awaiting_cnpj`);
+  if (!savedSession || savedSession.stage !== "awaiting_customer_identification") {
+    throw new Error(
+      `${params.name}: sessão deveria ficar em awaiting_customer_identification`,
+    );
   }
 
   if (savedSession.pendingAction !== "transfer") {
@@ -249,9 +260,9 @@ async function runScenario(params: {
 
   if (
     sendTextCalls.length !== 1 ||
-    sendTextCalls[0]?.message !== CNPJ_PROMPT_MESSAGE
+    sendTextCalls[0]?.message !== botContext.messages.customer_identification_prompt
   ) {
-    throw new Error(`${params.name}: deveria pedir CNPJ via mensagem de texto`);
+    throw new Error(`${params.name}: deveria pedir identificação via mensagem de texto`);
   }
 
   console.log(`\n=== ${params.name} ===`);

@@ -6,8 +6,11 @@ export {
   AFTER_HOURS_SUPPORT_CONFIRMATION_MESSAGE,
 } from "./confirmation-messages.js";
 export {
-  CNPJ_INVALID_MESSAGE,
-  CNPJ_PROMPT_MESSAGE,
-  CUSTOMER_IDENTIFICATION_PROMPT_MESSAGE,
-  CUSTOMER_IDENTIFICATION_TRANSFER_PREFIX_MESSAGE,
+  formatCustomerIdentificationTransferMessage,
+  getDefaultCustomerIdentificationInvalidMessage,
+  getDefaultCustomerIdentificationPromptMessage,
+  getDefaultCustomerIdentificationTransferTemplate,
+  resolveCustomerIdentificationInvalidMessage,
+  resolveCustomerIdentificationPromptMessage,
+  resolveCustomerIdentificationTransferTemplate,
 } from "./customer-identification-messages.js";

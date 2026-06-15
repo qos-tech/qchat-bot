@@ -41,6 +41,7 @@ QChat API
 - Webhook dinamico QChat em `/webhook/qchat/:webhookToken`
 - Resolucao dinamica de `BotConfig` por `webhook_token` e `evolution_instance`
 - Menus configuraveis por bot
+- Mensagens configuraveis por bot, incluindo identificacao do cliente
 - Transferencia para filas do QChat
 - Lookup de status de ticket no banco QChat
 - Retomada de fluxo quando o atendimento fecha ou reabre
@@ -199,6 +200,21 @@ Resposta esperada:
 3. `waiting_human` respeita estado do ticket no QChat
 4. Atendimento fechado pode ser retomado pelo bot
 
+## Configuracao de mensagens
+
+As mensagens do bot ficam em `messages_config`. Para identificacao do cliente,
+as chaves usadas sao:
+
+```json
+{
+  "customer_identification_prompt": "Para adiantar seu atendimento, informe a sua empresa ou o CNPJ.",
+  "customer_identification_invalid": "Nao consegui identificar a informacao enviada.",
+  "customer_identification_transfer_template": "Identificacao do cliente: {{value}}"
+}
+```
+
+Se a chave nao existir, o bot usa um fallback interno e continua funcionando.
+
 ## Estrutura do projeto
 
 ```text
@@ -232,4 +248,3 @@ src/
 - Integracao GLPI
 - Abertura automatica de chamados
 - Consulta e atualizacao de chamados
-

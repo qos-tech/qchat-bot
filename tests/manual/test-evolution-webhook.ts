@@ -3,7 +3,6 @@ import { join } from "node:path";
 import { HandleIncomingMessageUseCase } from "../../src/application/use-cases/handle-incoming-message-use-case.js";
 import { BotContextMapper } from "../../src/application/context/bot-context-mapper.js";
 import { createApp } from "../../src/presentation/http/create-app.js";
-import { CNPJ_PROMPT_MESSAGE } from "../../src/application/messages/index.js";
 import type { BotConfig } from "../../src/domain/bot/bot-config.js";
 import type { BotContext } from "../../src/application/context/bot-context.js";
 import type { NormalizedIncomingMessage } from "../../src/domain/messaging/normalized-incoming-message.js";
@@ -12,7 +11,7 @@ type SessionState = {
   ticketId: string;
   provider: "evolution";
   phone: string;
-  stage: "awaiting_main_menu" | "awaiting_cnpj" | "waiting_human";
+  stage: "awaiting_main_menu" | "awaiting_customer_identification" | "waiting_human";
   intent?: string;
   pendingAction?: string;
   pendingQueueId?: string;
@@ -61,6 +60,16 @@ const botConfig: BotConfig = {
   messages: {
     support_confirmation: "Encaminhando para suporte",
     other_confirmation: "Encaminhando para outros assuntos",
+    customer_identification_prompt: "PROMPT EVOLUTION",
+    customer_identification_invalid: "INVALID EVOLUTION",
+    customer_identification_transfer_template:
+      "Cliente informado: {{value}}",
+  },
+  features: {
+    customerIdentification: {
+      enabled: true,
+      requiredBeforeTransfer: true,
+    },
   },
   menus: {
     main: {
@@ -145,10 +154,15 @@ const messaging = {
 };
 
 const transfer = {
-  async transfer(params: { number: string; queueId: string | number }) {
+  async transfer(params: {
+    number: string;
+    queueId: string | number;
+    message?: string;
+  }) {
     transferCalls.push({
       number: params.number,
       queueId: params.queueId,
+      message: params.message,
     });
   },
 };
@@ -274,12 +288,12 @@ async function runButtonClick() {
   }
 
   const saved = sessionStore.get("4120182200:554197035511");
-  if (!saved || saved.stage !== "awaiting_cnpj") {
-    throw new Error("Scenario 2 deveria salvar sessão awaiting_cnpj");
+  if (!saved || saved.stage !== "awaiting_customer_identification") {
+    throw new Error("Scenario 2 deveria salvar sessão awaiting_customer_identification");
   }
 
-  if (sendTextCalls.length !== 1 || sendTextCalls[0]?.message !== CNPJ_PROMPT_MESSAGE) {
-    throw new Error("Scenario 2 deveria pedir CNPJ antes de transferir");
+  if (sendTextCalls.length !== 1 || sendTextCalls[0]?.message !== "PROMPT EVOLUTION") {
+    throw new Error("Scenario 2 deveria pedir identificação antes de transferir");
   }
 
   if (transferCalls.length !== 0) {
@@ -315,9 +329,13 @@ async function runButtonClick() {
   }
 
   if (
-    !String(transferCalls[0]?.message).includes("CNPJ informado pelo cliente: 04252011000110")
+    !String(transferCalls[0]?.message).includes("04252011000110") ||
+    !String(transferCalls[0]?.message).includes("Cliente informado: 04252011000110") ||
+    !String(transferCalls[0]?.message).includes("Encaminhando para suporte")
   ) {
-    throw new Error("Scenario 2b deveria incluir CNPJ na mensagem enviada ao QChat");
+    throw new Error(
+      `Scenario 2b deveria incluir a identificação na mensagem enviada ao QChat. Recebido: ${String(transferCalls[0]?.message)}`,
+    );
   }
 
   console.log("SCENARIO 2 - CLIQUE DE BOTAO + CNPJ");
