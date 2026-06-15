@@ -8,9 +8,10 @@ export class EvolutionPayloadNormalizer implements IncomingMessageNormalizer {
     const data = payload?.data ?? payload;
     const key = data?.key;
     const message = data?.message;
+    const messageType = data?.messageType;
     const instance = String(payload?.instance ?? "");
     const phone = this.extractPhone(key?.remoteJid);
-    const kind = this.detectKind(message);
+    const kind = this.detectKind(message, messageType);
     const media = this.extractMedia(message, kind);
     const text = this.extractText(message, kind);
     const buttonId = this.extractButtonId(message);
@@ -43,7 +44,13 @@ export class EvolutionPayloadNormalizer implements IncomingMessageNormalizer {
     return value.split("@")[0] ?? "";
   }
 
-  private detectKind(message: any): MessageKind {
+  private detectKind(message: any, messageType?: string): MessageKind {
+    if (
+      message?.buttonsResponseMessage ||
+      messageType === "buttonsResponseMessage"
+    ) {
+      return "button";
+    }
     if (message?.templateButtonReplyMessage || message?.listResponseMessage) {
       return "button";
     }
@@ -67,6 +74,7 @@ export class EvolutionPayloadNormalizer implements IncomingMessageNormalizer {
   private extractText(message: any, kind: MessageKind): string {
     if (kind === "button") {
       return (
+        message?.buttonsResponseMessage?.selectedDisplayText ||
         message?.templateButtonReplyMessage?.selectedDisplayText ||
         message?.listResponseMessage?.title ||
         message?.listResponseMessage?.description ||
@@ -95,6 +103,7 @@ export class EvolutionPayloadNormalizer implements IncomingMessageNormalizer {
 
   private extractButtonId(message: any): string | null {
     return (
+      message?.buttonsResponseMessage?.selectedButtonId ||
       message?.templateButtonReplyMessage?.selectedId ||
       message?.templateButtonReplyMessage?.selectedID ||
       message?.listResponseMessage?.singleSelectReply?.selectedRowId ||
@@ -108,6 +117,7 @@ export class EvolutionPayloadNormalizer implements IncomingMessageNormalizer {
     }
 
     return (
+      message?.buttonsResponseMessage?.selectedDisplayText ||
       message?.templateButtonReplyMessage?.selectedDisplayText ||
       message?.listResponseMessage?.title ||
       null

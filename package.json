@@ -34,6 +34,7 @@
     "test:bot-config-validator": "tsx tests/manual/test-bot-config-validator.ts",
     "test:bot-health": "tsx tests/manual/test-bot-health.ts",
     "test:bot-context": "tsx tests/manual/test-bot-context.ts",
+    "test:bot-runtime-behavior-config": "tsx tests/manual/test-bot-runtime-behavior-config.ts",
     "test:menu-resolver": "tsx tests/manual/test-menu-resolver.ts"
   },
   "keywords": [],
