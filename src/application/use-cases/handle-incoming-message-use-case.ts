@@ -1,4 +1,5 @@
 import type { ConversationSessionRepository } from "../../domain/bot/conversation-session-repository.js";
+import type { ConversationSession } from "../../domain/bot/conversation-session.js";
 import type { Intent } from "../../domain/bot/intent.js";
 import type { QChatTicketStatusLookup } from "../../domain/bot/qchat-ticket-status-lookup.js";
 import type { TicketTransferGateway } from "../../domain/bot/ticket-transfer-gateway.js";
@@ -16,10 +17,13 @@ import {
   AFTER_HOURS_SUPPORT_CONFIRMATION_MESSAGE,
   FINANCE_CONFIRMATION_MESSAGE,
   OTHER_CONFIRMATION_MESSAGE,
+  CUSTOMER_IDENTIFICATION_PROMPT_MESSAGE,
+  CUSTOMER_IDENTIFICATION_TRANSFER_PREFIX_MESSAGE,
   SUPPORT_CONFIRMATION_MESSAGE,
 } from "../messages/index.js";
 import type { BusinessHoursService } from "../services/business-hours-service.js";
 import { defaultBusinessHoursConfig } from "../services/default-business-hours-config.js";
+import { detectCustomerIdentification } from "../validation/customer-identification.js";
 
 export class HandleIncomingMessageUseCase {
   constructor(
@@ -37,6 +41,7 @@ export class HandleIncomingMessageUseCase {
   ): Promise<void> {
     const correlationId = createCorrelationId(message);
     const conversationId = message.conversationId;
+    let session = await this.sessions.findByTicketId(conversationId);
 
     console.info("[BOT] message_received", {
       correlationId,
@@ -90,6 +95,8 @@ export class HandleIncomingMessageUseCase {
 
     if (
       message.provider === "qchat" &&
+      session?.stage !== "awaiting_cnpj" &&
+      session?.stage !== "awaiting_customer_identification" &&
       String(message.queueId) !== triageQueueId
     ) {
       console.info("[BOT] message_ignored", {
@@ -104,8 +111,6 @@ export class HandleIncomingMessageUseCase {
       return;
     }
 
-    let session = await this.sessions.findByTicketId(conversationId);
-
     console.info("[BOT] session_checked", {
       correlationId,
       conversationId,
@@ -114,6 +119,21 @@ export class HandleIncomingMessageUseCase {
       stage: session?.stage,
       intent: session?.intent,
     });
+
+    if (
+      session?.stage === "awaiting_cnpj" ||
+      session?.stage === "awaiting_customer_identification"
+    ) {
+      await this.handleAwaitingCustomerIdentification(
+        message,
+        context,
+        session,
+        correlationId,
+        conversationId,
+      );
+
+      return;
+    }
 
     if (session?.stage === "waiting_human") {
       if (message.provider === "evolution") {
@@ -741,6 +761,104 @@ export class HandleIncomingMessageUseCase {
     return MenuToButtonMessage.convert(menu);
   }
 
+  private async handleAwaitingCustomerIdentification(
+    message: NormalizedIncomingMessage,
+    context: BotContext | undefined,
+    session: ConversationSession,
+    correlationId: string,
+    conversationId: string,
+  ): Promise<void> {
+    if (!context) {
+      console.info("[BOT] message_unhandled", {
+        correlationId,
+        ticketId: message.ticketId,
+        stage: "awaiting_customer_identification",
+        reason: "missing_bot_context",
+      });
+
+      return;
+    }
+
+    if (session.pendingAction !== "transfer" || !session.pendingQueueId) {
+      console.info("[BOT] message_unhandled", {
+        correlationId,
+        ticketId: message.ticketId,
+        stage: "awaiting_customer_identification",
+        reason: "missing_pending_transfer",
+      });
+
+      return;
+    }
+
+    const detectedIdentification = detectCustomerIdentification(message.text);
+    const customerIdentification = detectedIdentification.value;
+    const identificationType = detectedIdentification.type;
+    const normalizedCnpj =
+      identificationType === "cnpj" ? customerIdentification : null;
+
+    const confirmationMessage = session.pendingMessageKey
+      ? MenuResolver.getMessage(context, session.pendingMessageKey)
+      : null;
+
+    if (!confirmationMessage) {
+      throw new Error(
+        `Mensagem "${session.pendingMessageKey}" não encontrada no BotContext`,
+      );
+    }
+
+    const transferMessage = `Identificação informada pelo cliente:\n\nTipo: ${identificationType}\nValor: ${customerIdentification}\n\n${CUSTOMER_IDENTIFICATION_TRANSFER_PREFIX_MESSAGE}\n\n${confirmationMessage}`;
+
+    await this.sessions.save({
+      ticketId: conversationId,
+      provider: message.provider,
+      ...(message.companyId ? { companyId: String(message.companyId) } : {}),
+      ...(message.whatsappId ? { whatsappId: String(message.whatsappId) } : {}),
+      ...(message.contactId ? { contactId: String(message.contactId) } : {}),
+      phone: message.phone,
+      stage: "waiting_human",
+      ...(session.pendingIntent !== undefined
+        ? { intent: session.pendingIntent as Intent }
+        : {}),
+      pendingAction: session.pendingAction,
+      pendingQueueId: session.pendingQueueId,
+      ...(session.pendingIntent !== undefined
+        ? { pendingIntent: session.pendingIntent }
+        : {}),
+      ...(session.pendingMessageKey !== undefined
+        ? { pendingMessageKey: session.pendingMessageKey }
+        : {}),
+      customerIdentification,
+      identificationType,
+      ...(normalizedCnpj ? { cnpj: normalizedCnpj } : {}),
+    });
+
+    await this.transfer.transfer({
+      correlationId,
+      number: message.phone,
+      queueId: session.pendingQueueId,
+      status: "pending",
+      message: transferMessage,
+    });
+
+    console.info("[BOT] ticket_transferred", {
+      correlationId,
+      ticketId: message.ticketId,
+      queueId: session.pendingQueueId,
+      intent: session.pendingIntent,
+      customerIdentification,
+      identificationType,
+    });
+
+    console.info("[BOT] session_saved", {
+      correlationId,
+      ticketId: message.ticketId,
+      stage: "waiting_human",
+      intent: session.pendingIntent,
+      customerIdentification,
+      identificationType,
+    });
+  }
+
   private async executeContextButtonAction(
     context: BotContext,
     message: NormalizedIncomingMessage,
@@ -781,32 +899,6 @@ export class HandleIncomingMessageUseCase {
     });
 
     if (button.action.type === "transfer") {
-      const confirmationMessage = MenuResolver.getMessage(
-        context,
-        button.action.messageKey,
-      );
-
-      if (!confirmationMessage) {
-        throw new Error(
-          `Mensagem "${button.action.messageKey}" não encontrada no BotContext`,
-        );
-      }
-
-      await this.transfer.transfer({
-        correlationId,
-        number: message.phone,
-        queueId: button.action.queueId,
-        status: "pending",
-        message: confirmationMessage,
-      });
-
-      console.info("[BOT] ticket_transferred", {
-        correlationId,
-        ticketId: message.ticketId,
-        queueId: button.action.queueId,
-        intent: button.action.intent,
-      });
-
       await this.sessions.save({
         ticketId: conversationId,
         provider: message.provider,
@@ -816,15 +908,36 @@ export class HandleIncomingMessageUseCase {
           : {}),
         ...(message.contactId ? { contactId: String(message.contactId) } : {}),
         phone: message.phone,
-        stage: "waiting_human",
+        stage: "awaiting_customer_identification",
         intent: button.action.intent as Intent,
+        pendingAction: "transfer",
+        pendingQueueId: String(button.action.queueId),
+        pendingIntent: button.action.intent,
+        pendingMessageKey: button.action.messageKey,
       });
 
       console.info("[BOT] session_saved", {
         correlationId,
         ticketId: message.ticketId,
-        stage: "waiting_human",
+        stage: "awaiting_customer_identification",
         intent: button.action.intent,
+        pendingAction: "transfer",
+        pendingQueueId: button.action.queueId,
+        pendingMessageKey: button.action.messageKey,
+      });
+
+      await this.messaging.sendText({
+        correlationId,
+        phone: message.phone,
+        ...(message.whatsappId ? { whatsappId: message.whatsappId } : {}),
+        message: CUSTOMER_IDENTIFICATION_PROMPT_MESSAGE,
+      });
+
+      console.info("[BOT] message_sent", {
+        correlationId,
+        ticketId: message.ticketId,
+        stage: "awaiting_customer_identification",
+        messageType: "customer_identification_prompt",
       });
 
       return;

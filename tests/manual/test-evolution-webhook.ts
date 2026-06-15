@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { HandleIncomingMessageUseCase } from "../../src/application/use-cases/handle-incoming-message-use-case.js";
 import { BotContextMapper } from "../../src/application/context/bot-context-mapper.js";
 import { createApp } from "../../src/presentation/http/create-app.js";
+import { CNPJ_PROMPT_MESSAGE } from "../../src/application/messages/index.js";
 import type { BotConfig } from "../../src/domain/bot/bot-config.js";
 import type { BotContext } from "../../src/application/context/bot-context.js";
 import type { NormalizedIncomingMessage } from "../../src/domain/messaging/normalized-incoming-message.js";
@@ -11,8 +12,13 @@ type SessionState = {
   ticketId: string;
   provider: "evolution";
   phone: string;
-  stage: "awaiting_main_menu" | "waiting_human";
+  stage: "awaiting_main_menu" | "awaiting_cnpj" | "waiting_human";
   intent?: string;
+  pendingAction?: string;
+  pendingQueueId?: string;
+  pendingIntent?: string;
+  pendingMessageKey?: string;
+  cnpj?: string;
 };
 
 const textFixture = JSON.parse(
@@ -99,6 +105,7 @@ const botContext: BotContext = context;
 
 const sessionStore = new Map<string, SessionState>();
 const sendButtonCalls: Array<{ phone: string; title: string }> = [];
+const sendTextCalls: Array<{ phone: string; message: string }> = [];
 const transferCalls: Array<{ number: string; queueId: string | number }> = [];
 const lookupCalls: Array<{
   phone: string;
@@ -123,7 +130,12 @@ const sessions = {
 };
 
 const messaging = {
-  async sendText() {},
+  async sendText(params: { phone: string; message: string }) {
+    sendTextCalls.push({
+      phone: params.phone,
+      message: params.message,
+    });
+  },
   async sendButtons(params: { phone: string; payload: { title: string } }) {
     sendButtonCalls.push({
       phone: params.phone,
@@ -205,6 +217,7 @@ const app = createApp({
 function resetScenarioState() {
   sessionStore.clear();
   sendButtonCalls.length = 0;
+  sendTextCalls.length = 0;
   transferCalls.length = 0;
   lookupCalls.length = 0;
   latestTicketStatus = null;
@@ -213,6 +226,7 @@ function resetScenarioState() {
 
 function resetEventLogs() {
   sendButtonCalls.length = 0;
+  sendTextCalls.length = 0;
   transferCalls.length = 0;
   lookupCalls.length = 0;
 }
@@ -260,17 +274,56 @@ async function runButtonClick() {
   }
 
   const saved = sessionStore.get("4120182200:554197035511");
-  if (!saved || saved.stage !== "waiting_human") {
-    throw new Error("Scenario 2 não salvou sessão waiting_human");
+  if (!saved || saved.stage !== "awaiting_cnpj") {
+    throw new Error("Scenario 2 deveria salvar sessão awaiting_cnpj");
+  }
+
+  if (sendTextCalls.length !== 1 || sendTextCalls[0]?.message !== CNPJ_PROMPT_MESSAGE) {
+    throw new Error("Scenario 2 deveria pedir CNPJ antes de transferir");
+  }
+
+  if (transferCalls.length !== 0) {
+    throw new Error("Scenario 2 não deveria transferir antes do CNPJ");
+  }
+
+  const cnpjFixture = JSON.parse(JSON.stringify(textFixture));
+  cnpjFixture.data.message.conversation = "04.252.011/0001-10";
+  cnpjFixture.data.messageType = "conversation";
+  cnpjFixture.data.status = "DELIVERY_ACK";
+
+  const cnpjResponse = await app.inject({
+    method: "POST",
+    url: "/webhook/evolution",
+    payload: cnpjFixture,
+  });
+
+  if (cnpjResponse.statusCode !== 200) {
+    throw new Error(`Scenario 2b deveria retornar 200, recebeu ${cnpjResponse.statusCode}`);
+  }
+
+  const completed = sessionStore.get("4120182200:554197035511");
+  if (!completed || completed.stage !== "waiting_human") {
+    throw new Error("Scenario 2b deveria salvar sessão waiting_human");
+  }
+
+  if (completed.cnpj !== "04252011000110") {
+    throw new Error("Scenario 2b deveria salvar CNPJ normalizado");
   }
 
   if (transferCalls.length !== 1 || transferCalls[0]?.queueId !== "1") {
-    throw new Error("Scenario 2 não transferiu para a fila esperada");
+    throw new Error("Scenario 2b deveria transferir para a fila esperada");
   }
 
-  console.log("SCENARIO 2 - CLIQUE DE BOTAO");
+  if (
+    !String(transferCalls[0]?.message).includes("CNPJ informado pelo cliente: 04252011000110")
+  ) {
+    throw new Error("Scenario 2b deveria incluir CNPJ na mensagem enviada ao QChat");
+  }
+
+  console.log("SCENARIO 2 - CLIQUE DE BOTAO + CNPJ");
   console.log(response.json());
-  console.log({ savedSession: saved, transferCalls });
+  console.log(cnpjResponse.json());
+  console.log({ savedSession: completed, sendTextCalls, transferCalls });
 }
 
 async function runWaitingHumanOpen() {
