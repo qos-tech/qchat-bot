@@ -121,6 +121,41 @@ export class HandleIncomingMessageUseCase {
       intent: session?.intent,
     });
 
+    const latestQChatTicket =
+      message.provider === "evolution"
+        ? await this.lookupLatestQChatTicket(
+            message,
+            context,
+            correlationId,
+          )
+        : null;
+
+    if (
+      message.provider === "evolution" &&
+      this.isActiveHumanTicket(latestQChatTicket)
+    ) {
+      console.info("[BOT] message_ignored", {
+        correlationId,
+        reason: "human_ticket_still_open",
+        conversationId,
+        ticketId: message.ticketId,
+        qchatTicketId: latestQChatTicket?.ticketId,
+        qchatTicketStatus: latestQChatTicket?.status,
+        qchatTicketUserId:
+          latestQChatTicket?.userId !== undefined &&
+          latestQChatTicket?.userId !== null
+            ? String(latestQChatTicket.userId)
+            : null,
+        qchatTicketQueueId:
+          latestQChatTicket?.queueId !== undefined &&
+          latestQChatTicket?.queueId !== null
+            ? String(latestQChatTicket.queueId)
+            : null,
+      });
+
+      return;
+    }
+
     if (
       session?.stage === "awaiting_cnpj" ||
       session?.stage === "awaiting_customer_identification"
@@ -138,11 +173,7 @@ export class HandleIncomingMessageUseCase {
 
     if (session?.stage === "waiting_human") {
       if (message.provider === "evolution") {
-        const latestTicket = await this.lookupLatestQChatTicket(
-          message,
-          context,
-          correlationId,
-        );
+        const latestTicket = latestQChatTicket;
 
         if (!latestTicket) {
           console.info("[BOT] message_ignored", {
@@ -821,6 +852,23 @@ export class HandleIncomingMessageUseCase {
       ),
       resumeWhenPendingInTriage: lifecycle.resumeWhenPendingInTriage,
     };
+  }
+
+  private isActiveHumanTicket(
+    latestTicket: {
+      status: string;
+      userId?: string | number | null;
+    } | null,
+  ): boolean {
+    if (!latestTicket) {
+      return false;
+    }
+
+    const status = latestTicket.status.toLowerCase();
+    const hasActiveUser =
+      latestTicket.userId !== undefined && latestTicket.userId !== null;
+
+    return status === "open" || (status === "pending" && hasActiveUser);
   }
 
   private async handleAwaitingCustomerIdentification(
