@@ -1,3 +1,4 @@
+import { CNPJ_PROMPT_MESSAGE } from "../../src/application/messages/index.js";
 import { HandleIncomingMessageUseCase } from "../../src/application/use-cases/handle-incoming-message-use-case.js";
 import type { BotContext } from "../../src/application/context/bot-context.js";
 
@@ -5,12 +6,11 @@ type SessionState = {
   ticketId: string;
   provider: "evolution";
   phone: string;
-  stage: "awaiting_main_menu" | "awaiting_finance_menu";
-  intent?: string;
-};
-
-type BusinessHoursState = {
-  isOpen: boolean;
+  stage: "awaiting_main_menu" | "awaiting_finance_menu" | "awaiting_cnpj";
+  pendingAction?: string;
+  pendingQueueId?: string;
+  pendingIntent?: string;
+  pendingMessageKey?: string;
 };
 
 const botContext: BotContext = {
@@ -111,7 +111,6 @@ async function runScenario(params: {
   buttonId: string;
   expectedActiveMenuId: "main" | "after_hours" | "finance";
   expectedMessageKey: string;
-  expectedTransferMessage: string;
   expectedQueueId: string;
 }) {
   const sessionStore = new Map<string, SessionState>([
@@ -126,11 +125,8 @@ async function runScenario(params: {
     ],
   ]);
 
-  const transferCalls: Array<{
-    queueId: string | number;
-    message: string;
-    number: string;
-  }> = [];
+  const sendTextCalls: Array<Record<string, unknown>> = [];
+  const transferCalls: Array<Record<string, unknown>> = [];
   const logCalls: Array<[string, unknown?]> = [];
 
   const originalInfo = console.info;
@@ -152,16 +148,14 @@ async function runScenario(params: {
       },
     },
     {
-      async sendText() {},
+      async sendText(params: Record<string, unknown>) {
+        sendTextCalls.push(params);
+      },
       async sendButtons() {},
     },
     {
-      async transfer(params) {
-        transferCalls.push({
-          queueId: params.queueId,
-          message: params.message,
-          number: params.number,
-        });
+      async transfer(params: Record<string, unknown>) {
+        transferCalls.push(params);
       },
     },
     {
@@ -230,20 +224,34 @@ async function runScenario(params: {
     );
   }
 
-  if (transferCalls.length !== 1) {
-    throw new Error(`${params.name}: deveria haver exatamente uma transferência`);
+  if (transferCalls.length !== 0) {
+    throw new Error(`${params.name}: não deveria transferir antes do CNPJ`);
   }
 
-  if (transferCalls[0]?.queueId !== params.expectedQueueId) {
+  const savedSession = sessionStore.get(inputBase.conversationId);
+  if (!savedSession || savedSession.stage !== "awaiting_cnpj") {
+    throw new Error(`${params.name}: sessão deveria ficar em awaiting_cnpj`);
+  }
+
+  if (savedSession.pendingAction !== "transfer") {
+    throw new Error(`${params.name}: pendingAction deveria ser transfer`);
+  }
+
+  if (savedSession.pendingQueueId !== params.expectedQueueId) {
     throw new Error(
-      `${params.name}: queueId esperado ${params.expectedQueueId}, recebido ${String(transferCalls[0]?.queueId)}`,
+      `${params.name}: pendingQueueId esperado ${params.expectedQueueId}, recebido ${String(savedSession.pendingQueueId)}`,
     );
   }
 
-  if (transferCalls[0]?.message !== params.expectedTransferMessage) {
-    throw new Error(
-      `${params.name}: mensagem esperada ${params.expectedTransferMessage}, recebida ${String(transferCalls[0]?.message)}`,
-    );
+  if (savedSession.pendingMessageKey !== params.expectedMessageKey) {
+    throw new Error(`${params.name}: pendingMessageKey deveria ser preservada`);
+  }
+
+  if (
+    sendTextCalls.length !== 1 ||
+    sendTextCalls[0]?.message !== CNPJ_PROMPT_MESSAGE
+  ) {
+    throw new Error(`${params.name}: deveria pedir CNPJ via mensagem de texto`);
   }
 
   console.log(`\n=== ${params.name} ===`);
@@ -252,7 +260,8 @@ async function runScenario(params: {
     buttonId: actionLog.buttonId,
     actionType: actionLog.actionType,
     messageKey: actionLog.messageKey,
-    transferCalls,
+    pendingSession: savedSession,
+    sendTextCalls,
   });
 }
 
@@ -263,7 +272,6 @@ await runScenario({
   buttonId: "option_support",
   expectedActiveMenuId: "after_hours",
   expectedMessageKey: "after_hours_support_confirmation",
-  expectedTransferMessage: "CONFIRMACAO_AFTER_HOURS",
   expectedQueueId: "1",
 });
 
@@ -274,7 +282,6 @@ await runScenario({
   buttonId: "option_support",
   expectedActiveMenuId: "main",
   expectedMessageKey: "support_confirmation",
-  expectedTransferMessage: "CONFIRMACAO_MAIN",
   expectedQueueId: "1",
 });
 
@@ -285,7 +292,6 @@ await runScenario({
   buttonId: "finance_nf",
   expectedActiveMenuId: "finance",
   expectedMessageKey: "finance_confirmation",
-  expectedTransferMessage: "CONFIRMACAO_FINANCEIRO",
   expectedQueueId: "3",
 });
 

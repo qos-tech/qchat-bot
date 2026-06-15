@@ -15,6 +15,13 @@ export type ConversationSession = {
 
   stage: Stage;
   intent?: Intent;
+  pendingAction?: string;
+  pendingQueueId?: string;
+  pendingIntent?: Intent | string;
+  pendingMessageKey?: string;
+  customerIdentification?: string;
+  identificationType?: "company_name" | "cnpj";
+  cnpj?: string;
 
   createdAt?: Date;
   updatedAt?: Date;

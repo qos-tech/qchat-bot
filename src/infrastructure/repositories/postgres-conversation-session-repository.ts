@@ -15,6 +15,13 @@ export class PostgresConversationSessionRepository implements ConversationSessio
         phone,
         stage,
         intent,
+        pending_action,
+        pending_queue_id,
+        pending_intent,
+        pending_message_key,
+        customer_identification,
+        identification_type,
+        cnpj,
         created_at,
         updated_at
       FROM bot_sessions
@@ -38,6 +45,19 @@ export class PostgresConversationSessionRepository implements ConversationSessio
       ...(row.whatsapp_id ? { whatsappId: row.whatsapp_id } : {}),
       ...(row.contact_id ? { contactId: row.contact_id } : {}),
       ...(row.intent ? { intent: row.intent } : {}),
+      ...(row.pending_action ? { pendingAction: row.pending_action } : {}),
+      ...(row.pending_queue_id ? { pendingQueueId: row.pending_queue_id } : {}),
+      ...(row.pending_intent ? { pendingIntent: row.pending_intent } : {}),
+      ...(row.pending_message_key
+        ? { pendingMessageKey: row.pending_message_key }
+        : {}),
+      ...(row.customer_identification
+        ? { customerIdentification: row.customer_identification }
+        : {}),
+      ...(row.identification_type
+        ? { identificationType: row.identification_type }
+        : {}),
+      ...(row.cnpj ? { cnpj: row.cnpj } : {}),
 
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -56,9 +76,16 @@ export class PostgresConversationSessionRepository implements ConversationSessio
         phone,
         stage,
         intent,
+        pending_action,
+        pending_queue_id,
+        pending_intent,
+        pending_message_key,
+        customer_identification,
+        identification_type,
+        cnpj,
         updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, now())
       ON CONFLICT (ticket_id)
       DO UPDATE SET
         provider = EXCLUDED.provider,
@@ -68,6 +95,13 @@ export class PostgresConversationSessionRepository implements ConversationSessio
         phone = EXCLUDED.phone,
         stage = EXCLUDED.stage,
         intent = EXCLUDED.intent,
+        pending_action = EXCLUDED.pending_action,
+        pending_queue_id = EXCLUDED.pending_queue_id,
+        pending_intent = EXCLUDED.pending_intent,
+        pending_message_key = EXCLUDED.pending_message_key,
+        customer_identification = EXCLUDED.customer_identification,
+        identification_type = EXCLUDED.identification_type,
+        cnpj = EXCLUDED.cnpj,
         updated_at = now()
       `,
       [
@@ -79,6 +113,13 @@ export class PostgresConversationSessionRepository implements ConversationSessio
         session.phone,
         session.stage,
         session.intent ?? null,
+        session.pendingAction ?? null,
+        session.pendingQueueId ?? null,
+        session.pendingIntent ?? null,
+        session.pendingMessageKey ?? null,
+        session.customerIdentification ?? null,
+        session.identificationType ?? null,
+        session.cnpj ?? null,
       ],
     );
   }

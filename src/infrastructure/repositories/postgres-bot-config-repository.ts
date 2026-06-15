@@ -18,6 +18,7 @@ type BotConfigRow = {
   business_hours_config: Record<string, unknown>;
   messages_config: Record<string, unknown>;
   menus_config: Record<string, unknown>;
+  features_config?: Record<string, unknown> | null;
 };
 
 export class PostgresBotConfigRepository implements BotConfigRepository {
@@ -71,7 +72,7 @@ export class PostgresBotConfigRepository implements BotConfigRepository {
   }
 
   private toDomain(row: BotConfigRow): BotConfig {
-    return {
+    const botConfig: BotConfig = {
       id: row.id,
       name: row.name,
       webhookToken: row.webhook_token,
@@ -103,5 +104,13 @@ export class PostgresBotConfigRepository implements BotConfigRepository {
       messages: row.messages_config,
       menus: row.menus_config,
     };
+
+    if (row.features_config) {
+      botConfig.features = row.features_config as NonNullable<
+        BotConfig["features"]
+      >;
+    }
+
+    return botConfig;
   }
 }

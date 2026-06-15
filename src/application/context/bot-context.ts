@@ -1,3 +1,5 @@
+import type { BotFeatures } from "../../domain/bot/bot-config.js";
+
 export type BotContext = {
   botId: string;
   botName: string;
@@ -9,6 +11,8 @@ export type BotContext = {
   menus: Record<string, BotMenu>;
 
   messages: Record<string, string>;
+
+  features?: BotFeatures;
 };
 
 export type BotMenu = {

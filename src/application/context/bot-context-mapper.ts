@@ -16,6 +16,8 @@ export class BotContextMapper {
       menus: config.menus as BotContext["menus"],
 
       messages: config.messages as BotContext["messages"],
+
+      ...(config.features ? { features: config.features } : {}),
     };
   }
 }

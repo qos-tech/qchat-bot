@@ -24,6 +24,8 @@
     "test:session-repo": "tsx tests/manual/test-session-repository.ts",
     "test:business-hours": "tsx tests/manual/test-business-hours.ts",
     "test:use-case": "tsx tests/manual/test-handle-incoming-message.ts",
+    "test:cnpj": "tsx tests/manual/test-customer-identification.ts",
+    "test:customer-identification": "tsx tests/manual/test-customer-identification.ts",
     "test:evolution": "tsx tests/manual/test-evolution-gateway.ts",
     "test:qchat-transfer": "tsx tests/manual/test-qchat-transfer-gateway.ts",
     "test:bootstrap": "tsx tests/manual/test-bootstrap.ts",
@@ -32,6 +34,7 @@
     "test:bot-config-validator": "tsx tests/manual/test-bot-config-validator.ts",
     "test:bot-health": "tsx tests/manual/test-bot-health.ts",
     "test:bot-context": "tsx tests/manual/test-bot-context.ts",
+    "test:bot-runtime-behavior-config": "tsx tests/manual/test-bot-runtime-behavior-config.ts",
     "test:menu-resolver": "tsx tests/manual/test-menu-resolver.ts"
   },
   "keywords": [],

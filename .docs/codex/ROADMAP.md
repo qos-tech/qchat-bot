@@ -26,8 +26,13 @@ multibot e a entrada agnostica amadurecem.
 
 ## Fase v1.3 - GLPI
 
+- Customer Identification
+- Customer Resolver
+- Customer Confirmation
+
+## Fase v1.4 - GLPI
+
 - integracao GLPI
 - abertura automatica de chamados
 - consulta de chamados
 - atualizacao de chamados
-

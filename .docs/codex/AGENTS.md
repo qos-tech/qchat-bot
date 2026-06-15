@@ -8,7 +8,7 @@ QChat Bot - bot de triagem multiempresa integrado ao QChat e Evolution API.
 
 Trabalhar na branch:
 
-release/v1.1
+release/v1.3
 
 ## Regras obrigatórias
 

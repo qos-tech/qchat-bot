@@ -37,6 +37,84 @@ export class BotConfigValidator {
     this.validateEvolution(config);
     this.validateQChat(config);
     this.validateMenusAndMessages(config);
+    this.validateFeatures(config);
+  }
+
+  private static validateFeatures(config: BotConfig): void {
+    if (config.features === undefined) {
+      return;
+    }
+
+    if (!this.isRecord(config.features)) {
+      throw new Error("Bot.features inválido");
+    }
+
+    if (config.features.customerIdentification !== undefined) {
+      this.validateCustomerIdentificationFeature(
+        config.features.customerIdentification,
+      );
+    }
+
+    if (config.features.qchatTicketLifecycle !== undefined) {
+      this.validateQchatTicketLifecycleFeature(
+        config.features.qchatTicketLifecycle,
+      );
+    }
+  }
+
+  private static validateCustomerIdentificationFeature(
+    value: unknown,
+  ): void {
+    if (!this.isRecord(value)) {
+      throw new Error("Bot.features.customerIdentification inválido");
+    }
+
+    if (typeof value.enabled !== "boolean") {
+      throw new Error(
+        "Bot.features.customerIdentification.enabled obrigatório",
+      );
+    }
+
+    if (typeof value.requiredBeforeTransfer !== "boolean") {
+      throw new Error(
+        "Bot.features.customerIdentification.requiredBeforeTransfer obrigatório",
+      );
+    }
+  }
+
+  private static validateQchatTicketLifecycleFeature(value: unknown): void {
+    if (!this.isRecord(value)) {
+      throw new Error("Bot.features.qchatTicketLifecycle inválido");
+    }
+
+    if (typeof value.enabled !== "boolean") {
+      throw new Error("Bot.features.qchatTicketLifecycle.enabled obrigatório");
+    }
+
+    this.validateStringArray(
+      value.openStatuses,
+      "Bot.features.qchatTicketLifecycle.openStatuses obrigatório",
+    );
+    this.validateStringArray(
+      value.closedStatuses,
+      "Bot.features.qchatTicketLifecycle.closedStatuses obrigatório",
+    );
+    this.validateStringArray(
+      value.pendingStatuses,
+      "Bot.features.qchatTicketLifecycle.pendingStatuses obrigatório",
+    );
+
+    if (typeof value.resumeWhenPendingInTriage !== "boolean") {
+      throw new Error(
+        "Bot.features.qchatTicketLifecycle.resumeWhenPendingInTriage obrigatório",
+      );
+    }
+  }
+
+  private static validateStringArray(value: unknown, message: string): void {
+    if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
+      throw new Error(message);
+    }
   }
 
   private static validateEvolution(config: BotConfig): void {

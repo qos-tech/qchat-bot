@@ -78,6 +78,19 @@ const validConfig: BotConfig = {
       ],
     },
   },
+  features: {
+    customerIdentification: {
+      enabled: true,
+      requiredBeforeTransfer: true,
+    },
+    qchatTicketLifecycle: {
+      enabled: true,
+      openStatuses: ["open"],
+      closedStatuses: ["closed"],
+      pendingStatuses: ["pending"],
+      resumeWhenPendingInTriage: true,
+    },
+  },
 };
 
 function cloneConfig(): BotConfig {
@@ -142,6 +155,26 @@ const invalidCases: TestCase[] = [
       config.qchat.apiToken = "";
     },
     errorMessage: "QChat.apiToken obrigatório",
+  },
+  {
+    name: "features inválido",
+    configure: (config) => {
+      config.features = {
+        customerIdentification: {
+          enabled: true,
+          requiredBeforeTransfer: true,
+        },
+        qchatTicketLifecycle: {
+          enabled: true,
+          openStatuses: "open" as unknown as string[],
+          closedStatuses: ["closed"],
+          pendingStatuses: ["pending"],
+          resumeWhenPendingInTriage: true,
+        },
+      };
+    },
+    errorMessage:
+      "Bot.features.qchatTicketLifecycle.openStatuses obrigatório",
   },
 ];
 

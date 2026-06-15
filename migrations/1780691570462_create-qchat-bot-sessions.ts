@@ -44,6 +44,31 @@ export function up(pgm: MigrationBuilder): void {
       notNull: false,
     },
 
+    pending_action: {
+      type: "varchar(50)",
+      notNull: false,
+    },
+
+    pending_queue_id: {
+      type: "varchar(50)",
+      notNull: false,
+    },
+
+    pending_intent: {
+      type: "varchar(50)",
+      notNull: false,
+    },
+
+    pending_message_key: {
+      type: "varchar(100)",
+      notNull: false,
+    },
+
+    cnpj: {
+      type: "varchar(14)",
+      notNull: false,
+    },
+
     created_at: {
       type: "timestamp",
       notNull: true,

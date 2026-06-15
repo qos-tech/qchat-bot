@@ -33,4 +33,20 @@ export type BotConfig = {
   messages: Record<string, unknown>;
 
   menus: Record<string, unknown>;
+
+  features?: BotFeatures;
+};
+
+export type BotFeatures = {
+  customerIdentification?: {
+    enabled: boolean;
+    requiredBeforeTransfer: boolean;
+  };
+  qchatTicketLifecycle?: {
+    enabled: boolean;
+    openStatuses: string[];
+    closedStatuses: string[];
+    pendingStatuses: string[];
+    resumeWhenPendingInTriage: boolean;
+  };
 };

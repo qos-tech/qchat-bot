@@ -27,8 +27,12 @@
 - [x] 016 - After Hours Active Menu Resolution
 - [x] 017 - Business Hours Test Override
 - [x] 018 - v1.2 Documentation Refresh
+- [x] 019 - Customer Identification Step
 
-## Epic 3 - GLPI Integration
+## Epic 3 - Customer Identification
+
+- [ ] Definir fluxo de confirmação de empresa
+
+## Epic 4 - GLPI Integration
 
 - [ ] Definir o fluxo de integracao com GLPI
-
